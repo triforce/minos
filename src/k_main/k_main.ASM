@@ -160,7 +160,7 @@ start_long:
 
 	; Check there is memory above first Mib.
 	cmp word [user_mem], 1024
-    jg continue_pdp
+	jg continue_pdp
 
 	; ========================
 	; Fill user table

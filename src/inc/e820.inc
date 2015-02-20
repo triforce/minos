@@ -7,9 +7,9 @@
 
 e820_buffer: times 32    	db 0
 e820_bufferLength        	equ $ - e820_buffer
-line						db crlf, 0
-ram_e820h_msg				db 'Memory Available Below 1MB (bytes): ', 0
-ram_88h_msg					db 'Memory Available Above 1MB (kb): ', 0
+line				db crlf, 0
+ram_e820h_msg			db 'Memory Available Below 1MB (bytes): ', 0
+ram_88h_msg			db 'Memory Available Above 1MB (kb): ', 0
 
 detect_memory:
 
@@ -104,12 +104,12 @@ do_e820:
 	int	10h
 
 .finish_e820:
-    popa
+    	popa
 	mov si, ram_e820h_msg
 	call print_string
 
-    mov ax, total_mem
-    call print_register
+    	mov ax, total_mem
+    	call print_register
 
 	mov si, line
 	call print_string
@@ -119,30 +119,31 @@ do_e820:
    	call do_e88h
 
 	mov si, line
-    call print_string
+    	call print_string
 
-    xor eax, eax
+	xor eax, eax
  	mov eax, total_mem
  	;jmp $
 	ret
 
 do_e88h:
 	push ax
-	mov	ah, 88h
-	int	15h
+	mov ah, 88h
+	int 15h
 	jc .nsupported_88
 	mov [user_mem], ax
 	call print_register
-	pop	ax
+	pop ax
 	ret
 
 	.nsupported_88:
 		mov [mem_check], 0
-    	mov al, 'n'
-    	mov	ah, 0eh
-    	int	10h
-    	ret
+    		mov al, 'n'
+    		mov ah, 0eh
+    		int 10h
+    		ret
 
+; TODO move into library
 print_string:
 	; Pushes contents of ax to top of stack
 	push ax
@@ -154,41 +155,40 @@ print_string:
 		; Check if AL is 0
 		or al, al
 		jz .ret
-		mov	ah, 0eh
+		mov ah, 0eh
 
 		; Teletext output, AL = character to write
-		int	10h
-		jmp	@b
+		int 10h
+		jmp @b
 
 		.ret:
 		; Loads the value from the top of the stack to AX, increment pointer
-		pop	ax
+		pop ax
 
 		ret
 
+; TODO move into library
 print_register:
 	pusha
 	push 0
-	mov	bx, 10
+	mov bx, 10
 		@@:
-		xor	dx, dx
-		div	bx
-		add	dx, '0'
+		xor dx, dx
+		div bx
+		add dx, '0'
 		push dx
 		or al, al
-		jz	@f
-		jmp	@b
+		jz @f
+		jmp @b
 
 		@@:
-		pop	ax
+		pop ax
 		or al, al
 		jz @f
-		mov	ah, 0Eh
-		int	10h
-		jmp	@b
+		mov ah, 0Eh
+		int 10h
+		jmp @b
 
 		@@:
 		popa
 	ret
-
-
