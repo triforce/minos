@@ -1,0 +1,9 @@
+Build:
+To build the project use the fake make script (./make) with the parameter 'img' to create a FAT12 disk image or 'k' to build the binary kernel (which will eventually work with multi boot)
+
+The image can be loaded directly into Bochs as a floppy image or use VirtualBox (VBoxManage) to create a .vdi from the image file
+
+Bochs Config:
+* Choose the display type as 'term' (Or use X if you are running xorg)
+* Add a 1.44MB floppy controller to boot from - Use the build.img as the floppy image
+* For protected mode you may want to increase the default amount of RAM

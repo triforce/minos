@@ -1,0 +1,10 @@
+#!/bin/bash
+# This script assembles the kernel for multiboot
+
+cd ../src
+fasm mboot.ASM
+cd k_main
+fasm k_main.ASM
+cd ..
+fasm build_m.ASM
+cp build_m.BIN ../imgs/minos.BIN
