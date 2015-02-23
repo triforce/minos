@@ -100,8 +100,8 @@ do_e820:
 .nsupported:
 	mov [mem_check], 0
 	mov al, 'n'
-	mov	ah, 0eh
-	int	10h
+	mov ah, 0eh
+	int 10h
 
 .finish_e820:
     	popa

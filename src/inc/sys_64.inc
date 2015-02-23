@@ -18,26 +18,30 @@ k_main_msg_size = $ - k_main_msg
 k_c_char	    	db 0
 
 ; General
-k_var_1				dw 0
-k_var_2				dw 0
-k_var_3				dw 0
+k_var_1			dw 0
+k_var_2			dw 0
+k_var_3			dd 0
 
-hex_list			db '0123456789ABCDEF'
+hex_list		db '0123456789ABCDEF'
 
 ; Char buffer
 k_command_buffer	rb 24
-k_command_buffer_s	db 0
+k_command_buffer_s	dd 0
 
 ; Store current clock cycles
 k_clocks	    	dq 0
 
 ; CPU speed
+k_speed_msg		db 'CPU Speed (mhz): ', 0
+k_speed_msg_size = $ - k_speed_msg
 k_speed	    		dw 0
 
+k_pci_enabled		db 0
+
 total_mem    		rd 1
-user_mem			rw 0
-mem_amount			dd 0
-mem_check			db 1	; 1 = mem check succeeded, 0 = failed
+user_mem		rw 0
+mem_amount		dd 0
+mem_check		db 1	; 1 = mem check succeeded, 0 = failed
 
 ;*******
 ; GDT64

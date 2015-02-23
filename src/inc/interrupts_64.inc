@@ -20,10 +20,10 @@ interrupt_gate:
 	dd 0,0
 
 exception:
-	in	al, 61h
-	or	al, 3
-	out	61h, al
-	jmp	exception
+	in al, 61h
+	or al, 3
+	out 61h, al
+	jmp exception
 
 interrupt:
 	iretq
@@ -31,22 +31,33 @@ interrupt:
 irq_0_handler_clock:
 	push rax
 	inc [k_clocks]
-	mov	al, 20h
-	out	20h,al
-	pop	rax
+	mov al, 20h
+	out 20h, al
+	out 0A0h, al
+	pop rax
 	iretq
 
 irq_1_handler_keyboard:
 	push rax
 	call start_kb
-	in	al, 61h
-	out	61h, al
-	mov	al, 20h
-	out	20h, al
-	pop	rax
+	in al, 61h
+	out 61h, al
+	mov al, 20h
+	out 20h, al
+	out 0A0h, al
+	pop rax
+	iretq
+	
+irq_9_pci_device:
+	push rax
+	; TODO
+	mov al, 20h
+	out 20h, al
+	out 0A0h, al
+	pop rax
 	iretq
 
 reboot:
-	mov	al, 0FEh
-	out	64h, al
-	jmp	reboot
+	mov al, 0FEh
+	out 64h, al
+	jmp reboot

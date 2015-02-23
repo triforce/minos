@@ -226,6 +226,11 @@ main_64:
 	mov ss, ax
 	mov fs, ax
 	mov gs, ax
+	
+	; PIC 1		Command		0x0020
+	; PIC 1		Data		0x0021
+	; PIC 2		Command		0x00A0
+	; PIC 2		Data		0x00A1
 
 	; PIC 1 init
 	; Bit   Name
@@ -248,12 +253,15 @@ main_64:
 	; PIC 2 init
 	mov al, 10001b
 	out 0A0h, al
+	
 	mov al, 80h			; IRQ 0-7: interrupts 80h-87h
 	out 21h, al
 	mov al, 88h			; IRQ 8-15: interrupts 88h-8Fh
 	out 0A1h, al
+	
 	mov al, 100b 			; slave connected to IRQ2
 	out 21h, al
+	
 	mov al, 2
 	out 0A1h, al
 
@@ -277,7 +285,7 @@ main_64:
 	mov al, 11111100b
 	out 21h, al
 	in al, 0A1h
-	mov al, 11111111b
+	mov al, 11111101b
 	out 0A1h, al
 
 	xor edi, edi
@@ -298,6 +306,7 @@ make_interrupt_gates:
 
 	mov word [80h*16], irq_0_handler_clock
 	mov word [81h*16], irq_1_handler_keyboard
+	mov word [89h*16], irq_9_pci_device
 
 	lidt [IDTR]
 
@@ -310,6 +319,12 @@ clear_buffer:
 	jz intro_msg
 	in al, 60h
 	jmp clear_buffer
+
+init_pci_devices:
+	call drv_pci_init
+	; cmp [k_pci_enabled], 0
+	; je $
+	call drv_pci_scan
 	
 intro_msg:
 	; Move GDT
@@ -336,16 +351,15 @@ main_entry:
 	mov ecx, k_main_msg_size
 	call sys_character_print
 
-	; call sys_cpu_speed
-
 main_loop:
 	jmp main_loop
 
 include '../inc/macros_64.inc'
 include '../inc/interrupts_64.inc'
 include '../drivers/key_converter.inc'
-include '../drivers/keyboard.inc'
+include '../inc/key_handler.inc'
 include '../drivers/vga.inc'
+include '../drivers/pci.inc'
 include '../inc/commandlist.inc'
 include '../syscalls.ASM'
 

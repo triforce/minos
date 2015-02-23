@@ -38,3 +38,4 @@ dw	1970h, 1950h, 1999h, 1950h  ; P
 
 dw	3920h, 3920h, 3920h, 3920h  ; SPACEBAR
 dw	1c0dh, 1c0dh, 1c0dh, 1c0dh  ; ENTER
+dw	0826h, 0826h, 0826h, 0826h  ; AMPERSAND

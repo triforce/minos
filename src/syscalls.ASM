@@ -14,9 +14,9 @@
 
 sys_show_mem_amount:
 	push rcx
-	xor	ecx, ecx
-	mov	esi, total_mem
-	mov	ecx, 4
+	xor ecx, ecx
+	mov esi, total_mem
+	mov ecx, 4
 	call sys_character_print
 	pop rcx
 	ret
@@ -29,8 +29,7 @@ sys_show_mem_amount:
 ; ===============================
 
 sys_hex_print:
-	push rbx
-	push rax
+	push rbx rax
 	mov rbx, hex_list
 
 	push rax
@@ -49,8 +48,7 @@ sys_hex_print:
 	mov ecx, 1
 	call sys_character_print
 
-	pop rax
-	pop rbx
+	pop rbx rax
 	ret
 
 ; ===================================
@@ -63,9 +61,9 @@ sys_hex_print:
 
 sys_command_print:
 	call sys_character_print
-	; TODO Check user entered a valid command
+	
 	.sys_command_print_done:
-	ret
+		ret
 
 ; ===================================
 ; sys_character_print
@@ -77,7 +75,7 @@ sys_command_print:
 
 sys_character_print:
         ; Global text printer
-		pushaq
+	pushaq
         mov ax, 0x0F0E
         mov dx, 0x03D4
         out dx, al
@@ -157,13 +155,14 @@ scroll_screen_check:
 	cmp [ScreenLines], 24
 	jne .ret_scroll
 	; Clear the entire screen and start from the top
-		push rcx
-		xor rcx, rcx
-		mov rcx, 0
-		call sys_clear_screen
-		pop rcx
-		mov [ScreenLines], -1
-		xor ebx, ebx
+	push rcx
+	xor rcx, rcx
+	mov rcx, 0
+	call sys_clear_screen
+	pop rcx
+	mov [ScreenLines], -1
+	xor ebx, ebx
+	
 	.ret_scroll:
 		ret
 
@@ -199,7 +198,7 @@ sys_clear_screen:
 ; ===============================
 ; sys_cpu_speed
 ; ----------------
-; Clears the screen
+; Test CPU speed
 ; IN / OUT - none
 ; ===============================
 
@@ -223,6 +222,11 @@ test_speed:
 	mov rcx, 10240
 	div rcx
 
+	xor ecx, ecx
+	mov esi, k_speed_msg
+	mov ecx, k_speed_msg_size
+	call sys_character_print
+	
 	; Output speed
 	mov [k_speed], ax
 	xchg al, ah
