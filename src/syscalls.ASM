@@ -50,13 +50,48 @@ sys_hex_print:
 
 	pop rbx rax
 	ret
+	
+; ===================================
+; sys_dec_convert
+; -------------
+; Print decimal numbers to the screen
+; IN - ax/eax/rax = Decimal to print
+; OUT - number_buf = Contains ascii
+; ===================================
+
+sys_dec_convert:
+	push rdx rcx rbx rax
+	mov rbx, 10
+	xor rcx, rcx
+	
+	.sys_dec_print_do_div:
+		xor rdx, rdx
+		div rbx
+		push rdx
+		inc rcx
+		cmp rax, 0h
+		jne .sys_dec_print_do_div
+	
+	.sys_dec_print_do_digit:
+		pop rdx
+		add dl, '0'
+		push rbx
+		mov rbx, [number_count]
+		mov byte [number_buf+rbx], dl
+		inc rbx
+		mov [number_count], rbx
+		pop rbx
+		loop .sys_dec_print_do_digit
+
+	pop rax rbx rcx rdx
+        ret
 
 ; ===================================
 ; sys_command_print
 ; -------------------
 ; Handle command line input
 ; IN - esi = string to print
-; 	   ecx = number of chars to print
+;      ecx = number of chars to print
 ; ===================================
 
 sys_command_print:
@@ -70,7 +105,7 @@ sys_command_print:
 ; -------------------
 ; Print characters to the screen
 ; IN - esi = string to print
-; 	   ecx = number of chars to print
+;      ecx = number of chars to print
 ; ===================================
 
 sys_character_print:
@@ -96,12 +131,12 @@ sys_character_print:
 			; Set screen colours
 			; ax holds screen colors and char to write
 
-			mov ah, 00011111b
+			mov ah, 256_white_black
 			cmp al, 10
 
-			je 	.handleCR
+			je .handleCR
 			cmp al, 13
-			je 	.handleCR
+			je .handleCR
 			mov [es:(ebx*2+0xB8000)], ax
 			inc bx
 			jmp .nextChar
@@ -115,8 +150,8 @@ sys_character_print:
 			mov [es:(ebx*2+0xB8000)], ax
 			inc bx
 			; Currently this only supports 80x25 mode
-			mov [ScreenWidth], 80
-			mov ebx, 80
+			mov [ScreenWidth], MinX
+			mov ebx, MinX
 			mov eax, [ScreenLines]
 			mul ebx
 			mov [ScreenYPos], eax
@@ -152,7 +187,7 @@ sys_character_print:
 		ret
 
 scroll_screen_check:
-	cmp [ScreenLines], 24
+	cmp [ScreenLines], MinY - 1
 	jne .ret_scroll
 	; Clear the entire screen and start from the top
 	push rcx
@@ -187,7 +222,7 @@ sys_clear_screen:
 
 	start_clear:
 	add rbx, 2
-	mov ah, 00011111b
+	mov ah, 256_white_black
 	mov [0B8000h + rbx], rax
 	cmp rbx, rcx
 	jne start_clear
@@ -195,45 +230,95 @@ sys_clear_screen:
 	xor rcx, rcx
 	ret
 
-; ===============================
+; ==============================================
+; sys_pci_dump
+; ----------------
+; Output PCI device list in device/vendor format
+; IN / OUT - none
+; ==============================================
+
+sys_pci_dump:
+	pushaq
+	xor ecx, ecx
+	mov esi, k_pci_msg
+	mov ecx, k_pci_msg_size
+	call sys_character_print
+	call drv_pci_scan
+	popaq
+	ret
+
+; ================
 ; sys_cpu_speed
 ; ----------------
 ; Test CPU speed
 ; IN / OUT - none
-; ===============================
+; ================
 
 sys_cpu_speed:
-	push rax rbx rcx ax
-	cpuid
-	xor edx, edx
-	xor eax, eax
-	mov rcx, [k_clocks]
-	add rcx, 10
-	rdtsc ; Get clock cycles since boot/reset
-	push rax
-test_speed:
-	mov rbx, [k_clocks]
-	cmp rbx, rcx
-	jl test_speed
-	rdtsc
-	pop rdx
-	sub rax, rdx
-	xor edx, edx
-	mov rcx, 10240
-	div rcx
-
+	push rax rbx rcx
+	
 	xor ecx, ecx
 	mov esi, k_speed_msg
 	mov ecx, k_speed_msg_size
 	call sys_character_print
 	
 	; Output speed
-	mov [k_speed], ax
+	mov ax, [k_speed]
 	xchg al, ah
 	call sys_hex_print
 	xchg al, ah
 	call sys_hex_print
 
 	.done_sys_cpu_speed:
-	pop rax rbx rcx ax
+		pop rax rbx rcx
+		ret
+
+test_cpu_speed:
+	ret
+	
+; =============================
+; sys_wait
+; ----------------
+; Wait for x amount of time
+; IN - RAX = Time to wait in ms
+; =============================
+
+sys_wait:
+	push rax bx
+	mov [k_countdown], rax
+		
+	sys_wait_count:
+		mov rax, [k_countdown]
+		or rax, rax
+		jnz sys_wait_count
+		
+	sys_wait_done:
+		pop rax bx
+		ret
+
+; ===============================
+; sys_show_mem
+; ----------------
+; Show total memory free in bytes
+; IN  - None
+; OUT - Print total to sreen
+; ===============================
+
+sys_show_mem:
+	push rax rcx rbx
+	mov esi, k_memory_msg
+	mov ecx, k_memory_msg_size
+	call sys_character_print
+
+	mov eax, [total_mem]
+	call sys_dec_convert
+	
+	mov esi, number_buf
+	mov ecx, dword [number_count]
+	call sys_character_print
+	
+	mov [number_count], 0
+	mov [number_buf], 0
+	
+	pop rax rcx rbx
 	ret

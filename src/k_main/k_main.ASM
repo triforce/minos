@@ -7,8 +7,6 @@
 
 format binary
 
-include '../constants.inc'
-
 use16
 org 1200h
 
@@ -36,50 +34,56 @@ start:
 
 	mov ax, 0e43h
 	xor bx, bx
-	; Get cursor position and shape, return dl with column, ax = 0
 	int 10h
 
 	; Set video mode 3 (text) 80 x 25
 	mov ax, 0003h
 	int 10h
-
-	; TODO VBE
+	
+	; TODO VESA
 
 	call detect_memory
 
 	; Fast A20 gate
-    enable_A20:
-    	in al, 64h
-    	test al, 2h
-    	jnz enable_A20
-    	mov al, 0D1h
-    	out 64h, al
-    check_A20:
-    	in al, 64h
-    	test al, 2h
-    	jnz check_A20
-    	mov al, 0DFh
+	enable_A20:
+		in al, 64h
+		test al, 2h
+		jnz enable_A20
+		mov al, 0D1h
+		out 64h, al
+	check_A20:
+		in al, 64h
+		test al, 2h
+		jnz check_A20
+		mov al, 0DFh
 
 	startgdt:
-	; Load GDT
-	lgdt [cs:GDTR]
+		; Load GDT
+		lgdt [cs:GDTR]
 
-	mov eax, cr0
-	or al, 0x1
-	mov cr0, eax
+		mov eax, cr0
+		or al, 0x1
+		mov cr0, eax
 
-	jmp R0_CODE_SELECTOR:intop
+		jmp R0_CODE_SELECTOR:intop
 
 	GDTR:
     	dw 4*8-1 ; limit
     	dq GDT ; linear address
 
-    GDT rw 4
+	GDT rw 4
     	dw 0FFFFh,0,9200h,08Fh
     	dw 0FFFFh,0,9A00h,0CFh
     	dw 0FFFFh,0,9A00h,0AFh
 
+crlf		equ 0dh, 0ah
+CR0_PAGING	equ 0x80000000
+LONG_CHECK	equ 0x80000001
+LONG_TEST	equ 0x20000000
+
 include '../inc/e820.inc'
+include '../inc/functions_16.inc'
+include '../drivers/vesa.inc'
 
 ;===============
 ; 32-bit kernel
@@ -139,7 +143,7 @@ start_long:
 	; User table
 	mov dword [73000h], 74000h + 111b
 
-	; ========================
+	; =====================================================
 	; Fill Identity mapped table
 
 	; Page table entry (256 x 4 byte entries) 4kb entries
@@ -156,13 +160,13 @@ start_long:
 		add edi, 4
 		add eax, 1000h
 		loop make_page_entries
-	; ========================
+	; =====================================================
 
 	; Check there is memory above first Mib.
 	cmp word [user_mem], 1024
 	jg continue_pdp
 
-	; ========================
+	; =================================
 	; Fill user table
 	; Address of second page table
 	mov edi, 74000h
@@ -174,25 +178,24 @@ start_long:
 		add edi, 4
 		add eax, 1000h
 		loop make_user_page_entries
-	; ========================
+	; =================================
 
-    continue_pdp:
+	continue_pdp:
+		; Load PDP physical address into cr3 register
+		mov eax, 70000h
+		mov cr3, eax
 
-	; Load PDP physical address into cr3 register
-	mov eax, 70000h
-	mov cr3, eax
+		mov ecx, 0C0000080h          ; EFER MSR
+		rdmsr
+		or eax, 1 shl 8             ; Enable long mode
+		wrmsr
 
-	mov ecx, 0C0000080h          ; EFER MSR
-	rdmsr
-	or eax, 1 shl 8             ; Enable long mode
-	wrmsr
+		mov eax, cr0
+		or eax, CR0_PAGING
+		; Enable paging
+		mov cr0, eax
 
-	mov eax, cr0
-	or eax, CR0_PAGING
-	; Enable paging
-	mov cr0, eax
-
-	jmp R0_LONG_SELECTOR:main_64
+		jmp R0_LONG_SELECTOR:main_64
 
 ;***************************
 ; 64-bit Kernel Entry Point
@@ -254,12 +257,12 @@ main_64:
 	mov al, 10001b
 	out 0A0h, al
 	
-	mov al, 80h			; IRQ 0-7: interrupts 80h-87h
+	mov al, 80h ; IRQ 0-7: interrupts 80h-87h
 	out 21h, al
-	mov al, 88h			; IRQ 8-15: interrupts 88h-8Fh
+	mov al, 88h ; IRQ 8-15: interrupts 88h-8Fh
 	out 0A1h, al
 	
-	mov al, 100b 			; slave connected to IRQ2
+	mov al, 100b ; Slave connected to IRQ2
 	out 21h, al
 	
 	mov al, 2
@@ -306,35 +309,48 @@ make_interrupt_gates:
 
 	mov word [80h*16], irq_0_handler_clock
 	mov word [81h*16], irq_1_handler_keyboard
+	mov word [88h*16], irq_8_rtc ; Not used currently
 	mov word [89h*16], irq_9_pci_device
+	
+	; Set PIT to around 100hz
+	mov al,76h
+	out 43h, al
+	mov al, 9bh
+	out 40h, al
+	mov al, 2eh
+	out 40h, al
 
 	lidt [IDTR]
-
 	sti
 
 ; Keyboard buffer must be cleared before IRQ1 will fire
 clear_buffer:
 	in al, 64h
 	test al, 1
-	jz intro_msg
+	jz finalise_memory
 	in al, 60h
 	jmp clear_buffer
 
+; Initialise PCI devices
 init_pci_devices:
 	call drv_pci_init
-	; cmp [k_pci_enabled], 0
-	; je $
-	call drv_pci_scan
-	
-intro_msg:
-	; Move GDT
+
+; Finish setting up memory
+finalise_memory:
+	; Move GDT to final location
 	mov esi, GDT64
 	mov edi, 0x00001000
-	mov ecx, 1Fh
+	mov ecx, GDTR64_size
 	rep movsb
 	
 	; Then load it
 	lgdt [GDTR64]
+
+	; Move system variables to final location
+	mov esi, SysVars
+	mov edi, 0x00003200
+	mov ecx, SysVars_size
+	rep movsb
 
 	; cmp byte [mem_check], 0
 	; je main_entry
@@ -343,7 +359,7 @@ intro_msg:
 main_entry:
 	; Clear the screen starting from line 2
 	xor rcx, rcx
-	mov rcx, 2
+	mov rcx, 0
 	call sys_clear_screen
 
 	; Add main command line message and wait for user input
@@ -356,15 +372,11 @@ main_loop:
 
 include '../inc/macros_64.inc'
 include '../inc/interrupts_64.inc'
-include '../drivers/key_converter.inc'
 include '../inc/key_handler.inc'
+include '../inc/commandlist.inc'
 include '../drivers/vga.inc'
 include '../drivers/pci.inc'
-include '../inc/commandlist.inc'
+include '../drivers/key_converter.inc'
 include '../syscalls.ASM'
 
-load_end_addr:
-; align 4
-; rb STACK_SIZE
-bss_end_addr:
 times   2000h - ($-$$)   db 0 ; Pad out to 8192 bytes long (so we know exactly how large the kernel is)

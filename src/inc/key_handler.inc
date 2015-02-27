@@ -3,7 +3,7 @@
 ; Copyright (C) 2010-2015
 ;
 ; Key Handler / CLI
-; ==========================================================
+; =========================================================
 
 ; TODO
 detect_kb:
@@ -59,28 +59,28 @@ check_table:
 	end_kb:
 		ret
 
+; All commands currently only fit in a dword
 check_command:
-	cmp [k_command_buffer+0], 26h
-	jne check_command_done
+	cmp dword [k_command_buffer], '&spe'
+	je sys_cpu_speed_c
+	cmp dword [k_command_buffer], '&pci'
+	je sys_pci_dump_c
+	cmp dword [k_command_buffer], '&mem'
+	je sys_show_mem_c
 	
-	cmp [k_command_buffer+1], 73h
-	jne check_command_done
-	
-	cmp [k_command_buffer+2], 70h
-	jne check_command_done
-	
-	cmp [k_command_buffer+3], 65h
-	jne check_command_done
-	
-	cmp [k_command_buffer+4], 0h
-	jne check_command_done
-	
-	call sys_cpu_speed
-	
-	; Tidy the lines
-	mov esi, k_c_char
-	mov ecx, 1
-	call sys_command_print
+	jmp check_command_done
+
+	sys_cpu_speed_c:
+		call sys_cpu_speed
+		jmp check_command_done
+		
+	sys_pci_dump_c:	
+		call sys_pci_dump
+		jmp check_command_done
+		
+	sys_show_mem_c:
+		call sys_show_mem
+		jmp check_command_done
 	
 	check_command_done:
 		ret

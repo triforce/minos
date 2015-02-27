@@ -28,12 +28,32 @@ exception:
 interrupt:
 	iretq
 
+; Handle Programmable Interval Timer (PIT) channel 0, IRQ fires every 54ms roughly
 irq_0_handler_clock:
 	push rax
-	inc [k_clocks]
+	inc [k_pit_clocks]
+	
+	; Flash a 0/1 in the top right corner to show clock ticking
+	mov rax, [k_pit_clocks]
+	and al, 1
+	add al, 48
+	mov [0x000B809A], al
+	
+	; If we have a wait action then handle it
+	push rbx
+	mov rbx, [k_countdown]
+	
+	handle_timer:
+		or rbx, rbx
+		jz done_handle_timer
+		dec rbx
+		mov [k_countdown], rbx
+		
+	done_handle_timer:
+		pop rbx
+	
 	mov al, 20h
 	out 20h, al
-	out 0A0h, al
 	pop rax
 	iretq
 
@@ -46,6 +66,14 @@ irq_1_handler_keyboard:
 	out 20h, al
 	out 0A0h, al
 	pop rax
+	iretq
+	
+irq_8_rtc:
+	push rdi rax
+	add qword [k_clocks], 1
+	mov al, 20h
+	out 20h, al
+	pop rdi rax
 	iretq
 	
 irq_9_pci_device:
