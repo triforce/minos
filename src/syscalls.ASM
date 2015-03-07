@@ -2,24 +2,8 @@
 ; minos -- a hobby operating system written for x86-64
 ; Copyright (C) 2010-2015
 ;
-; SysCalls
+; System Calls
 ; =========================================================
-
-; ===================
-; sys_show_mem_amount
-; -------------------
-; Show system memory
-; IN / OUT - none
-; ===================
-
-sys_show_mem_amount:
-	push rcx
-	xor ecx, ecx
-	mov esi, total_mem
-	mov ecx, 4
-	call sys_character_print
-	pop rcx
-	ret
 
 ; ===============================
 ; sys_hex_print
@@ -55,7 +39,7 @@ sys_hex_print:
 ; sys_dec_convert
 ; -------------
 ; Print decimal numbers to the screen
-; IN - ax/eax/rax = Decimal to print
+; IN  - ax/eax/rax = Decimal to print
 ; OUT - number_buf = Contains ascii
 ; ===================================
 
@@ -85,6 +69,70 @@ sys_dec_convert:
 
 	pop rax rbx rcx rdx
         ret
+
+; ===========================================
+; sys_convert_ascii_dec
+; -------------
+; Print decimal numbers to the screen
+; IN  - al = ASCII representation of decimal
+; OUT - al = Decimal
+; ==========================================
+
+sys_convert_ascii_dec:
+	cmp al, 31h
+	je is_1
+	cmp al, 32h
+	je is_2
+	cmp al, 33h
+	je is_3
+	cmp al, 34h
+	je is_4
+	cmp al, 35h
+	je is_5
+	cmp al, 36h
+	je is_6
+	cmp al, 37h
+	je is_7
+	cmp al, 38h
+	je is_8
+	cmp al, 39h
+	je is_9
+	cmp al, 30h
+	je is_0
+	
+	is_1:
+	mov al, 1
+	jmp sys_convert_ascii_dec_done
+	is_2:
+	mov al, 2
+	jmp sys_convert_ascii_dec_done
+	is_3:
+	mov al, 3
+	jmp sys_convert_ascii_dec_done
+	is_4:
+	mov al, 4
+	jmp sys_convert_ascii_dec_done
+	is_5:
+	mov al, 5
+	jmp sys_convert_ascii_dec_done
+	is_6:
+	mov al, 6
+	jmp sys_convert_ascii_dec_done
+	is_7:
+	mov al, 7
+	jmp sys_convert_ascii_dec_done
+	is_8:
+	mov al, 8
+	jmp sys_convert_ascii_dec_done
+	is_9:
+	mov al, 9
+	jmp sys_convert_ascii_dec_done
+	is_0:
+	mov al, 0
+	jmp sys_convert_ascii_dec_done
+	
+	sys_convert_ascii_dec_done:
+	ret
 
 ; ===================================
 ; sys_command_print
@@ -182,9 +230,10 @@ sys_character_print:
 		out dx, ax
 
 		.doneChar:
-
-		popaq
-		ret
+			mov [number_buf], 0
+			mov [number_count], 0
+			popaq
+			ret
 
 scroll_screen_check:
 	cmp [ScreenLines], MinY - 1
@@ -234,7 +283,7 @@ sys_clear_screen:
 ; sys_pci_dump
 ; ----------------
 ; Output PCI device list in device/vendor format
-; IN / OUT - none
+; IN / OUT - None
 ; ==============================================
 
 sys_pci_dump:
@@ -251,7 +300,7 @@ sys_pci_dump:
 ; sys_cpu_speed
 ; ----------------
 ; Test CPU speed
-; IN / OUT - none
+; IN / OUT - None
 ; ================
 
 sys_cpu_speed:
@@ -296,29 +345,123 @@ sys_wait:
 		pop rax bx
 		ret
 
-; ===============================
+; +++++++++++++++++++
+; Memory System Calls
+; +++++++++++++++++++
+
+; =======================================
+; sys_allom
+; ----------------
+; Allocate memory
+; IN  - rcx = Number of bytes to allocate
+; OUT - rax = Starting address
+; =======================================
+
+sys_allom:
+	push rsi rdx rbx
+
+	; Must be at least one byte
+	cmp rcx, 0
+	je sys_allom_fail
+
+	xor rax, rax
+	mov rsi, sys_free_mem
+	mov eax, sys_max_user_mem
+	mov rdx, rsi
+	
+	sub rsi, 1
+	std ; Set direction flag
+	add rsi, rax
+
+	sys_allom_start:
+		mov rbx, rcx
+
+	sys_allom_check:
+		lodsb
+		
+		; As we are counting downwards check if we are at the start of the user memory section (sys_free_mem)
+		cmp rsi, rdx
+		je sys_allom_fail
+
+		; Free = 1
+		cmp al, 1
+		jne sys_allom_start
+
+		dec rbx
+		jnz sys_allom_check
+
+	sys_allom_doalloc:
+		cld ; Clear direction flag
+
+		xor rdi, rsi
+		xor rsi, rdi
+		xor rdi, rsi
+	
+		push rcx
+		add rdi, 1
+		mov al, 2
+		mov rbx, rdi
+		rep stosb
+		mov rdi, rsi
+		sub rbx, rdx
+		pop rcx
+
+		shl rbx, 1
+		add rbx, rax ; Add total available memory back to calculate address
+		mov rax, rbx
+		jmp sys_allom_done
+
+	sys_allom_fail:
+		; Restore direction flag if failed
+		cld
+		xor rax, rax
+
+	sys_allom_done:
+		pop rbx rdx rsi
+		ret
+
+; ====================================
 ; sys_show_mem
 ; ----------------
-; Show total memory free in bytes
-; IN  - None
+; Show total free memory
+; IN  - cl = 1 (bytes), 2(KiB), 3(MiB)
 ; OUT - Print total to sreen
-; ===============================
+; ====================================
 
 sys_show_mem:
 	push rax rcx rbx
+	mov [mem_size], cl
+
 	mov esi, k_memory_msg
 	mov ecx, k_memory_msg_size
 	call sys_character_print
-
+	
 	mov eax, [total_mem]
-	call sys_dec_convert
+	cmp [mem_size], 1
+	je set_b
+	cmp [mem_size], 2
+	je set_kb
+	cmp [mem_size], 3
+	je set_mb
 	
-	mov esi, number_buf
-	mov ecx, dword [number_count]
-	call sys_character_print
+	set_b:
+		jmp sys_show_mem_display
+	set_kb:
+		shr eax, 10
+		jmp sys_show_mem_display
+	set_mb:
+		shr eax, 20
+		jmp sys_show_mem_display
+
+	sys_show_mem_display:
+		call sys_dec_convert
 	
-	mov [number_count], 0
-	mov [number_buf], 0
+		mov esi, number_buf
+		mov ecx, dword [number_count]
+		call sys_character_print
+	
+		mov [number_count], 0
+		mov [number_buf], 0
 	
 	pop rax rcx rbx
 	ret

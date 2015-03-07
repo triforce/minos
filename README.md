@@ -7,7 +7,7 @@ Currently boots from a pre built disk image with planned support for GRUB multib
 
 System Requirements:
 
-* RAM: 1MB
+* RAM: 2MB - (3MB for User Mode)
 * CPU: x86-64
 
 Microprocessors tested on:

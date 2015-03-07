@@ -36,6 +36,17 @@ dw	1769h, 1749h, 1797h, 1749h  ; I
 dw	186fh, 184fh, 1898h, 184fh  ; O
 dw	1970h, 1950h, 1999h, 1950h  ; P
 
+dw	0231h, 0231h, 0231h, 0231h  ; 1
+dw	0332h, 0332h, 0332h, 0332h  ; 2
+dw	0433h, 0433h, 0433h, 0433h  ; 3
+dw	0534h, 0534h, 0534h, 0534h  ; 4
+dw	0635h, 0635h, 0635h, 0635h  ; 5
+dw	0736h, 0736h, 0736h, 0736h  ; 6
+dw	0837h, 0837h, 0837h, 0837h  ; 7
+dw	0938h, 0938h, 0938h, 0938h  ; 8
+dw	0a39h, 0a39h, 0a39h, 0a39h  ; 9
+dw	0b30h, 0b30h, 0b30h, 0b30h  ; 0
+
 dw	3920h, 3920h, 3920h, 3920h  ; SPACEBAR
 dw	1c0dh, 1c0dh, 1c0dh, 1c0dh  ; ENTER
-dw	0826h, 0826h, 0826h, 0826h  ; AMPERSAND
+dw	0c2dh, 0c2dh, 0c2dh, 0c2dh  ; -

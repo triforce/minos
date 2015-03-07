@@ -131,46 +131,45 @@ start_long:
 	xor eax, eax
 	rep stosd
 
-	; Page directory table for the MMU
+	; Build the Page Map Level 4
 	mov dword [70000h], 71000h + 111b
 
-	; First page directory
+	; Build the First Page Directory Pointer Table
 	mov dword [71000h], 72000h + 111b
 
-	; Identity mapped table
-	mov dword [72000h], 73000h + 111b
+	; Build the First Page Directory
+	mov dword [72000h], 73000h + 111b ; Entry #1 Points to first page table
+	mov dword [72008h], 74000h + 011b ; Entry #2 Points to second page table
 
-	; User table
-	mov dword [73000h], 74000h + 111b
+	; ================================================================
+	; Create Identity mapped table for first 2MiB
 
-	; =====================================================
-	; Fill Identity mapped table
-
-	; Page table entry (256 x 4 byte entries) 4kb entries
-	; <-Physical page address->  |
-	; 0000 0000 0000 0000 0000     0000 0000 0111 (su/rw/p)
-
+	; Page table entry (256 x 4 byte entries) one entry addresses 4KiB
+	; <-Physical page address->  |        a  wurp
+	; 0000 0000 0000 0000 0000     0000 0000 0111
+	
 	; Address of first page table
 	mov edi, 73000h
-	mov eax, 0 + 011b ; Supervisor only page table
-	mov ecx, 256
+	mov eax, 0 + 111b ; Supervisor only page table
+	mov ecx, 512
 
 	make_page_entries:
 		stosd
 		add edi, 4
 		add eax, 1000h
 		loop make_page_entries
-	; =====================================================
+	; ================================================================
 
-	; Check there is memory above first Mib.
-	cmp word [user_mem], 1024
-	jg continue_pdp
+	; Check there is memory available for user applications
+	cmp word [user_mem], 2048
+	jl continue_pdp
 
-	; =================================
-	; Fill user table
+	; ===============================================
+	; Create user table (1MiB for applications)
 	; Address of second page table
 	mov edi, 74000h
-	mov eax, 0 + 111b
+	mov eax, 200000h + 011b
+	
 	mov ecx, 256
 
 	make_user_page_entries:
@@ -178,10 +177,10 @@ start_long:
 		add edi, 4
 		add eax, 1000h
 		loop make_user_page_entries
-	; =================================
+	; ===============================================
 
 	continue_pdp:
-		; Load PDP physical address into cr3 register
+		; Load Page Map Level 4 physical address into cr3 register
 		mov eax, 70000h
 		mov cr3, eax
 
@@ -352,9 +351,23 @@ finalise_memory:
 	mov ecx, SysVars_size
 	rep movsb
 
-	; cmp byte [mem_check], 0
-	; je main_entry
-	; call sys_show_mem_amount
+	; Allocate additional kernel and user data
+	; 1 = Free, 2 = In Use, 3 = Reserved
+	push rax rcx rdi
+	
+	; Set additional kernel memory
+	mov rdi, sys_kernel_extra
+	xor rcx, rcx
+	mov rcx, 100000h
+	mov al, 3
+	rep stosb
+	; Set memory available for user applications
+	mov rdi, sys_free_mem
+	xor rcx, rcx
+	mov rcx, 100000h
+	mov al, 1
+	rep stosb
+	pop rdi rcx rax
 
 main_entry:
 	; Clear the screen starting from line 2

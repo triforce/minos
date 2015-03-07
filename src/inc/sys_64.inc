@@ -8,6 +8,9 @@
 SysVars:
 sys_base        	equ 0x0000000000001200
 sys_vars        	equ 0x0000000000003200
+sys_kernel_extra	equ 0x0000000000100000
+sys_free_mem		equ 0x0000000000200000
+sys_max_user_mem	equ 0x0000000000100000
 
 R0_NULL_SELECTOR	= 0
 R0_DATA_SELECTOR	= 1 shl 3
@@ -24,6 +27,7 @@ k_main_msg_size		= $ - k_main_msg
 k_var_1			dw 0
 k_var_2			dw 0
 k_var_3			dd 0
+k_var_4			dq 0
 hex_list		db '0123456789ABCDEF'
 dec_list		db '0123456789'
 number_buf		dq 0
@@ -52,7 +56,7 @@ k_pci_list		rd 10
 k_pci_device		dd 0
 
 ; Memory
-k_memory_msg		db 'Free memory available (bytes):', 0
+k_memory_msg		db 'Free memory available (KiB):', 0
 k_memory_msg_size	= $ - k_memory_msg
 total_mem    		rd 1
 user_mem		rw 0

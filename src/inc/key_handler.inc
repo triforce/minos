@@ -25,7 +25,7 @@ check_table:
 	; Check the converter table
 	mov dx, [scantbl+rbx]
 	add bx, 2
-	cmp bx, 228 ; Size of scan table
+	cmp bx, 320 ; Size of scan table
 	je end_kb
 	cmp al, dh
 	
@@ -61,12 +61,14 @@ check_table:
 
 ; All commands currently only fit in a dword
 check_command:
-	cmp dword [k_command_buffer], '&spe'
+	cmp dword [k_command_buffer], '-spe'
 	je sys_cpu_speed_c
-	cmp dword [k_command_buffer], '&pci'
+	cmp dword [k_command_buffer], '-pci'
 	je sys_pci_dump_c
-	cmp dword [k_command_buffer], '&mem'
+	cmp dword [k_command_buffer], '-mem'
 	je sys_show_mem_c
+	cmp dword [k_command_buffer], '-alo'
+	je sys_alloc_mem_c
 	
 	jmp check_command_done
 
@@ -79,10 +81,19 @@ check_command:
 		jmp check_command_done
 		
 	sys_show_mem_c:
+		mov cl, 2 ; Show in KiB
 		call sys_show_mem
 		jmp check_command_done
+		
+	; Allocate (al) bytes of memory, eg -alo 4
+	sys_alloc_mem_c:
+		mov al, byte [k_command_buffer+5]
+		call sys_convert_ascii_dec
+		mov cl, al
+		call sys_allom
+		jmp check_command_done
 	
-	check_command_done:
+	check_command_done:	
 		ret
 
 clear_command_buffer:
@@ -127,5 +138,5 @@ add_to_command_buffer:
 		; Buffer is full!
 
 	.done_check:
-		pop rax rbx ax bx
+		pop bx ax rbx rax
 		ret
