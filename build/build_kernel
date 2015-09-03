@@ -7,4 +7,4 @@ cd k_main
 fasm k_main.ASM
 cd ..
 fasm build_m.ASM
-cp build_m.BIN ../imgs/minos.BIN
+mv build_m.BIN ../grub/minos.BIN

@@ -32,12 +32,8 @@ start:
 	mov bp, sp
 	sti
 
-	mov ax, 0e43h
-	xor bx, bx
-	int 10h
-
 	; Set video mode 3 (text) 80 x 25
-	mov ax, 0003h
+	mov ax, 03h
 	int 10h
 	
 	; TODO VESA
@@ -116,7 +112,8 @@ check_long:
 
 main_32:
 	; Protected mode not supported with functionality
-	; TODO inform user
+	mov eax, 0x0753074e
+	mov [0xb8000], eax
 	hlt
 
 start_long:
@@ -167,6 +164,7 @@ start_long:
 	; ===============================================
 	; Create user table (1MiB for applications)
 	; Address of second page table
+	mov [user_mode_enabled], 1
 	mov edi, 74000h
 	mov eax, 200000h + 011b
 	
@@ -205,6 +203,13 @@ use64
 include '../inc/sys_64.inc'
 
 main_64:
+
+	; Save the config file into kernel data before memory gets remapped
+        mov esi, 0500h
+        mov edi, k_config_file
+        mov ecx, 8
+        rep movsb
+	
 	; Clear everything out
 	xor rax, rax
 	xor rbx, rbx
@@ -287,7 +292,7 @@ main_64:
 	mov al, 11111100b
 	out 21h, al
 	in al, 0A1h
-	mov al, 11111101b
+	mov al, 11111101b ; Enable IRQ 9
 	out 0A1h, al
 
 	xor edi, edi
@@ -310,12 +315,17 @@ make_interrupt_gates:
 	mov word [81h*16], irq_1_handler_keyboard
 	mov word [88h*16], irq_8_rtc ; Not used currently
 	mov word [89h*16], irq_9_pci_device
+
+	mov [k_pit_clocks], 0
 	
 	; Set PIT to around 100hz
-	mov al,76h
+	mov dx, 2e9bh
+	mov al, 36h 
 	out 43h, al
+	mov ax, dx
 	mov al, 9bh
 	out 40h, al
+	xchg ah, al
 	mov al, 2eh
 	out 40h, al
 
@@ -336,6 +346,7 @@ init_pci_devices:
 
 ; Finish setting up memory
 finalise_memory:
+
 	; Move GDT to final location
 	mov esi, GDT64
 	mov edi, 0x00001000
@@ -345,7 +356,7 @@ finalise_memory:
 	; Then load it
 	lgdt [GDTR64]
 
-	; Move system variables to final location
+	; Move system/kernel variables and data to final location
 	mov esi, SysVars
 	mov edi, 0x00003200
 	mov ecx, SysVars_size
@@ -361,6 +372,9 @@ finalise_memory:
 	mov rcx, 100000h
 	mov al, 3
 	rep stosb
+
+	cmp [user_mode_enabled], 0
+	je main_entry
 	; Set memory available for user applications
 	mov rdi, sys_free_mem
 	xor rcx, rcx
@@ -375,10 +389,19 @@ main_entry:
 	mov rcx, 0
 	call sys_clear_screen
 
-	; Add main command line message and wait for user input
-	mov esi, k_main_msg
-	mov ecx, k_main_msg_size
-	call sys_character_print
+        ; Add config found message
+        mov esi, k_config1_msg
+        mov ecx, k_config1_msg_size
+        call sys_character_print
+	
+	; Add config file contents
+	mov esi, k_config_file
+        mov ecx, 8
+        call sys_character_print
+	call sys_lb
+	mov al, 1 ; Configure PCI devices
+	call sys_pci_list
+
 
 main_loop:
 	jmp main_loop
@@ -389,6 +412,8 @@ include '../inc/key_handler.inc'
 include '../inc/commandlist.inc'
 include '../drivers/vga.inc'
 include '../drivers/pci.inc'
+include '../drivers/i8254x.inc'
+include '../drivers/rtl8169.inc'
 include '../drivers/key_converter.inc'
 include '../syscalls.ASM'
 

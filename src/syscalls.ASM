@@ -148,6 +148,38 @@ sys_command_print:
 	.sys_command_print_done:
 		ret
 
+; ============================
+; sys_lb
+; ------
+; Adds new line to the screen
+; IN - None
+; ============================
+sys_lb:
+	mov [ScreenWidth], MinX
+	mov ebx, MinX
+	mov eax, [ScreenLines]
+	mul ebx
+	mov [ScreenYPos], eax
+	sub [ScreenWidth], ebx
+	add ebx, [ScreenWidth]
+	add ebx, [ScreenYPos]
+	call scroll_screen_check
+	inc [ScreenLines]
+
+	; Set cursor position
+	mov al, 0x0E
+	mov ah, bh
+	mov dx, 0x03D4
+	out dx, ax
+	inc ax
+	mov ah, bl
+	out dx, ax
+
+	mov esi, k_main_msg
+	mov ecx, k_main_msg_size
+	call sys_character_print
+	ret
+
 ; ===================================
 ; sys_character_print
 ; -------------------
@@ -172,31 +204,24 @@ sys_character_print:
         movzx ebx, ax
 
        .character_printLoop:
-			; Print each character
-			lodsb
+		; Print each character
+		lodsb
+		; Set blue background and white foreground
+		; Set screen colours
+		; ax holds screen colors and char to write
 
-			; Set blue background and white foreground
-			; Set screen colours
-			; ax holds screen colors and char to write
+		mov ah, 256_white_black
+		cmp al, 10
 
-			mov ah, 256_white_black
-			cmp al, 10
+		je .handleCR
+		cmp al, 13
+		je .handleCR
 
-			je .handleCR
-			cmp al, 13
-			je .handleCR
-			mov [es:(ebx*2+0xB8000)], ax
-			inc bx
-			jmp .nextChar
+		mov [es:(ebx*2+0xB8000)], ax
+		inc bx
+		jmp .nextChar
 
-			.handleCR:
-			mov al, 0dh
-			mov [es:(ebx*2+0xB8000)], ax
-			inc bx
-
-			mov al, 0ah
-			mov [es:(ebx*2+0xB8000)], ax
-			inc bx
+		.handleCR:
 			; Currently this only supports 80x25 mode
 			mov [ScreenWidth], MinX
 			mov ebx, MinX
@@ -215,19 +240,19 @@ sys_character_print:
 			mov ecx, k_main_msg_size
 
 		.nextChar:
-		; Loop through buffer
-		; cmp 	ecx, 0
-		; jne 	.character_printLoop
-		; dec 	ecx
-		loop .character_printLoop
+			; Loop through buffer
+			; cmp 	ecx, 0
+			; jne 	.character_printLoop
+			; dec 	ecx
+			loop .character_printLoop
 
-		mov al, 0x0E
-		mov ah, bh
-		mov dx, 0x03D4
-		out dx, ax
-		inc ax
-		mov ah, bl
-		out dx, ax
+			mov al, 0x0E
+			mov ah, bh
+			mov dx, 0x03D4
+			out dx, ax
+			inc ax
+			mov ah, bl
+			out dx, ax
 
 		.doneChar:
 			mov [number_buf], 0
@@ -262,12 +287,12 @@ sys_clear_screen:
 	xor rbx, rbx
 	xor rax, rax
 
-	mov rax, 160
+	mov rax, TotL
 	mul rcx
 	add rbx, rax
 	xor rax, rax
 	xor rcx, rcx
-	mov rcx, 4000
+	mov rcx, TotS
 
 	start_clear:
 	add rbx, 2
@@ -280,19 +305,23 @@ sys_clear_screen:
 	ret
 
 ; ==============================================
-; sys_pci_dump
+; sys_pci_list
 ; ----------------
 ; Output PCI device list in device/vendor format
-; IN / OUT - None
+; IN - al = 0/1 to configure devices as well
+; OUT - None
 ; ==============================================
 
-sys_pci_dump:
+sys_pci_list:
 	pushaq
+	mov dl, al
 	xor ecx, ecx
 	mov esi, k_pci_msg
 	mov ecx, k_pci_msg_size
 	call sys_character_print
+	mov al, dl
 	call drv_pci_scan
+	call sys_lb
 	popaq
 	ret
 
@@ -304,25 +333,57 @@ sys_pci_dump:
 ; ================
 
 sys_cpu_speed:
-	push rax rbx rcx
-	
+	push rax rbx rcx rdx
+
 	xor ecx, ecx
 	mov esi, k_speed_msg
 	mov ecx, k_speed_msg_size
 	call sys_character_print
 	
+        xor rax, rax
+        xor rbx, rbx
+        xor rcx, rcx
+        xor rdx, rdx
+
+	mov rax, 1
+	cpuid
+	test rdx, 0x10
+	jz done_sys_cpu_speed
+	mov rbx, [k_pit_clocks]
+
+sys_cpu_speed_wait1:
+	cmp rbx, [k_pit_clocks]
+	jz sys_cpu_speed_wait1
+	rdtsc
+	mov [k_loTSC], rax
+	mov [k_hiTSC], rdx
+	add rbx, 2
+
+sys_cpu_speed_wait2:
+	cmp rbx, [k_pit_clocks]
+	jnz sys_cpu_speed_wait2
+	rdtsc
+	sub rax, [k_loTSC]
+	sbb rdx, [k_hiTSC]
+	mov rbx, 10000
+	div rbx
+	mov [k_speed], rax
+	
 	; Output speed
-	mov ax, [k_speed]
-	xchg al, ah
-	call sys_hex_print
-	xchg al, ah
-	call sys_hex_print
+	xor rax, rax
+	mov rax, [k_speed]
+	call sys_dec_convert
 
-	.done_sys_cpu_speed:
-		pop rax rbx rcx
-		ret
+        mov esi, number_buf
+	mov ecx, dword [number_count]
+	call sys_character_print
 
-test_cpu_speed:
+	mov [number_count], 0
+	mov [number_buf], 0
+
+done_sys_cpu_speed:
+	call sys_lb
+	pop rax rbx rcx rdx
 	ret
 	
 ; =============================
@@ -364,9 +425,11 @@ sys_allom:
 	cmp rcx, 0
 	je sys_allom_fail
 
+	mov [mem_size], cl
+
 	xor rax, rax
 	mov rsi, sys_free_mem
-	mov eax, sys_max_user_mem
+	mov rax, sys_max_user_mem
 	mov rdx, rsi
 	
 	sub rsi, 1
@@ -377,7 +440,7 @@ sys_allom:
 		mov rbx, rcx
 
 	sys_allom_check:
-		lodsb
+		lodsb ; load byte from si into al
 		
 		; As we are counting downwards check if we are at the start of the user memory section (sys_free_mem)
 		cmp rsi, rdx
@@ -462,6 +525,6 @@ sys_show_mem:
 	
 		mov [number_count], 0
 		mov [number_buf], 0
-	
+	call sys_lb	
 	pop rax rcx rbx
 	ret

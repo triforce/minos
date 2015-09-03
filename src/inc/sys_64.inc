@@ -24,7 +24,7 @@ R0_LONG_SELECTOR	= 3 shl 3
 ; General
 k_main_msg	    	db 'minos64 > ', 0
 k_main_msg_size		= $ - k_main_msg
-k_var_1			dw 0
+k_var_1			db 0
 k_var_2			dw 0
 k_var_3			dd 0
 k_var_4			dq 0
@@ -40,20 +40,29 @@ k_command_buffer_s	dd 0 ; Number of chars in buffer
 crlf			equ 0dh, 0ah
 
 ; Clock
-k_speed_msg		db 'CPU Speed (mhz):', 0
+k_speed_msg		db 'CPU Speed (Mhz):', 0
 k_speed_msg_size	= $ - k_speed_msg
-k_speed	    		dw 0 ; CPU speed
+k_speed	    		dq 0 ; CPU speed
 k_clocks	    	dq 0 ; RTC cycles
 k_pit_clocks		dq 0 ; PIT cycles
 k_countdown		dq 0
+k_loTSC 		dq 0
+k_hiTSC 		dq 0
 
 ; PCI
 k_pci_msg		db 'PCI devices:', 0
 k_pci_msg_size		= $ - k_pci_msg
 k_pci_enabled		db 0
 k_pci_devices		dd 0 ; Number of PCI devices
-k_pci_list		rd 10
 k_pci_device		dd 0
+k_pci_net_device 	dd 0
+k_pci_net_device_irq 	db 0
+k_pci_net_device_ioaddr dw 0
+k_pci_rtl8139 		equ 0x8139
+k_pci_rtl8169           equ 0x8169
+k_pci_i82557b		equ 0x1209
+k_pci_i82551            equ 0x1209
+k_pci_i82559er          equ 0x1229
 
 ; Memory
 k_memory_msg		db 'Free memory available (KiB):', 0
@@ -63,6 +72,13 @@ user_mem		rw 0
 mem_amount		dd 0
 mem_check		db 1 ; 1 = mem check succeeded, 0 = failed
 mem_size		db 0
+user_mode_enabled 	db 0
+
+; Config 
+k_config_file  		rb 8
+k_config1_msg           db 'Config found on disk: ', 0
+k_config1_msg_size      = $ - k_config1_msg
+
 
 SysVars_size		= $ - SysVars
 

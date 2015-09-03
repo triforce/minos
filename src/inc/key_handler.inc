@@ -76,8 +76,9 @@ check_command:
 		call sys_cpu_speed
 		jmp check_command_done
 		
-	sys_pci_dump_c:	
-		call sys_pci_dump
+	sys_pci_dump_c:
+		mov al, 0 ; Don't configure	
+		call sys_pci_list
 		jmp check_command_done
 		
 	sys_show_mem_c:

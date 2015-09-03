@@ -28,16 +28,18 @@ exception:
 interrupt:
 	iretq
 
-; Handle Programmable Interval Timer (PIT) channel 0, IRQ fires every 54ms roughly
+; Handle Programmable Interval Timer (PIT) channel 0
 irq_0_handler_clock:
 	push rax
-	inc [k_pit_clocks]
+	mov rax, 1
+	adc [k_pit_clocks], rax
+	xor rax, rax
 	
 	; Flash a 0/1 in the top right corner to show clock ticking
-	mov rax, [k_pit_clocks]
-	and al, 1
-	add al, 48
-	mov [0x000B809A], al
+	; mov rax, [k_pit_clocks]
+	; and al, 1
+	; add al, 48
+	; mov [0x000B809A], al
 	
 	; If we have a wait action then handle it
 	push rbx

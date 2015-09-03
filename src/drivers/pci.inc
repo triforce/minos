@@ -27,7 +27,7 @@ PCI_CONFIG_DATA     equ     0xCFC
 ; ========================================================
 
 drv_pci_read:
-	push rax rbx rdx rcx
+	push rbx rdx rcx
 	and eax, 0x00ffffff ; Set bits 24-31 to zero
 	or eax, 0x80000000 ; Set bit 31
 	mov dx, PCI_CONFIG_ADDRESS
@@ -36,7 +36,7 @@ drv_pci_read:
 	in eax, dx
 	
 	drv_done_pci_read:
-		pop rax rbx rdx rcx
+		pop rbx rdx rcx
 		ret
 
 ; ==============================================
@@ -71,15 +71,16 @@ drv_pci_init:
 ; drv_pci_scan
 ; ------------
 ; Scan for PCI devices and output hex format of device/vendor	
-; IN / OUT - None
+; IN - al = 0/1 whether to configure devices found or not
+; OUT - None
 ; ===========================================================
 
 drv_pci_scan:
 	push rdx rcx rbx rax
-
+	mov [k_var_1], al
 	xor rcx, rcx
 	xor rax, rax
-	mov ecx, 0x8000000 ; Set bit 31
+	mov ecx, 0x80000000
 	mov [k_pci_devices], 0
 	mov [k_pci_device], 0
 
@@ -95,12 +96,30 @@ drv_pci_scan:
 		
 		; Keep a count of devices
 		inc [k_pci_devices]
-		; TODO store list of devices
-		; mov [k_pci_list], eax
 
-		; Output device / vendor
-		push rcx
 		mov [k_pci_device], eax
+		push rcx
+		
+		; Check whether to configure drivers
+		cmp [k_var_1], 0
+		je drve_found_continue
+
+		; Check for supported network driver
+                mov ah, byte [k_pci_device+3]
+                mov al, byte [k_pci_device+2]
+                cmp ax, k_pci_rtl8139
+		je drv_found_network_rtl 
+		cmp ax, k_pci_rtl8169
+		je drv_found_network_rtl
+		cmp ax, k_pci_i82557b
+		je drv_found_network_int
+                cmp ax, k_pci_i82551
+                je drv_found_network_int
+	        cmp ax, k_pci_i82559er
+		je drv_found_network_int
+	
+	drve_found_continue:
+		; Output device / vendor
 		mov al, byte [k_pci_device+3]
 		call sys_hex_print
 		mov al, byte [k_pci_device+2]
@@ -122,3 +141,19 @@ drv_pci_scan:
 	drv_done_pci_scan:
 		pop rdx rcx rbx rax
 		ret
+
+	drv_found_network_rtl:
+		push rax rcx
+		mov [k_pci_net_device], ecx
+		mov eax, [k_pci_net_device]
+		call drv_net_rtl8169_init
+		pop rax rcx
+		jmp drve_found_continue
+
+	drv_found_network_int:
+		push rax rcx
+		mov [k_pci_net_device], ecx
+		mov eax, [k_pci_device]
+		call drv_net_i8254_init
+		pop rax rcx
+		jmp drve_found_continue

@@ -22,10 +22,10 @@ if [ $1 == "k" ]; then
         cd build
         ./build_kernel
         cd ..
-        if [ ! -f imgs/minos.BIN ]; then
+        if [ ! -f grub/minos.BIN ]; then
                 echo "Build failed :("
         else
-                k_size=`stat -c %s imgs/minos.BIN`
-                echo "Built imgs/minos.BIN - Size: $k_size bytes"
+                k_size=`stat -c %s grub/minos.BIN`
+                echo "Built grub/minos.BIN - Size: $k_size bytes"
         fi
 fi	
