@@ -3,7 +3,7 @@ minos
 
 A simple hobby operating system based on a monolithic kernel design written purely in assembly language.
 
-Currently boots from a pre built disk image with planned support for GRUB multiboot.
+Boots from a pre built disk image with planned support for GRUB multiboot.
 
 Current image size: 14KB
 
