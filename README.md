@@ -18,3 +18,7 @@ Microprocessors tested on:
 * Intel Core 2
 
 I want to say a big thanks to the Flat Assembler community (http://flatassembler.net) for their help and advice - The boards are full of great examples and I hope they inspire more to take up assembly programming.
+
+<h3>QEMU</h3>
+Run minos with the QEMU Processor Emulator using:
+qemu-system-x86_64 -fda imgs/build.img  -m 4
