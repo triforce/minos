@@ -78,10 +78,10 @@ start:
 		int 13h
 		jc read_config
 	
-	; Check config bit is set
+	; Check config is set
 	; TODO shutdown if not set
 	check_config:
-		cmp byte [es:0500h], '1'
+		cmp byte [es:0500h], 00110001b
 		jne check_config
 	
 	; Jump to location where kernel starts in memory
@@ -126,12 +126,11 @@ directories:
 	
 	db 02h		; Second entry
 	db "config"	; Filename of second data
-	db "txt"	; Extension of file
-	dw 09h		; Size of file
+	dw 01h		; Size of file
 	
 	times 512 * 10 -($-directories) db 0
 
 ; Files on disk
 disk_data:
 	file 'k_main/k_main.BIN'
-	file 'config.txt'
+	file 'config'
