@@ -1,0 +1,1 @@
+qemu-system-x86_64 -fda imgs/build.img -m 3
