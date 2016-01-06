@@ -8,37 +8,37 @@
 format binary
 
 org 1000h
-
 use32
 
 mbootHeader:
-dd 0x1badb002 ; Multiboot magic
-dd 0x00010003 ; Flags
-dd 0-(0x1badb002+0x00010003) ; Checksum
+	dd 0x1badb002 ; Multiboot magic
+	dd 0x00010003 ; Flags
+	dd 0-(0x1badb002+0x00010003) ; Checksum
 
-dd mbootHeader ; Header address
-dd 1000h ; Kernel start address
-dd 3200h ; Kernel end address
-dd 0 ; BSS end address
-dd k_start ; Entry point
+	dd mbootHeader ; Header address
+	dd 1000h ; Kernel start address
+	dd k_end ; Kernel end address
+	dd 0 ; BSS end address
+	dd k_start ; Entry point
+
+LONG_CHECK	equ 0x80000001
+LONG_TEST	equ 0x20000000
 
 k_start:
-cli
-mov eax, cr0
-xor eax, 0x80000000
-mov cr0, eax
+	xor eax, eax
+	; Check if CPU long mode capable
+	mov eax, LONG_CHECK
+	cpuid
 
-xor eax, eax
-mov cr3, eax
+	test edx, LONG_TEST
+	jnz start_long
 
-mov eax, cr0
-xor eax, 1
-mov cr0, eax
+	jmp k_end
 
-jmp 0000:start_real
+start_long:
+	hlt
 
-use16
-
-start_real:
-; Head to the main kernel (should already be in memory)
-jmp 0000:1200h
+k_end:
+	mov eax, 0x0753074e
+	mov [0xb8000], eax
+	hlt

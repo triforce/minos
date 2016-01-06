@@ -1,8 +1,0 @@
-#!/bin/bash
-# This script assembles all of the source files into a disk image
-
-cd ../src/k_main
-fasm k_main.ASM
-cd ..
-fasm boot.ASM
-cp boot.img ../imgs/build.img

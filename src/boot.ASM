@@ -132,5 +132,5 @@ directories:
 
 ; Files on disk
 disk_data:
-	file 'k_main/k_main.BIN'
+	file 'k_main.BIN'
 	file 'config'
