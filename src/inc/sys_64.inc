@@ -91,8 +91,10 @@ GDTR64:
 	dq 0x00001000
 
 GDT64 rw 4
-	dw 0FFFFh,0,9200h,08Fh
-	dw 0FFFFh,0,9A00h,0CFh
-	dw 0FFFFh,0,9A00h,0AFh
+	dw 0FFFFh,0,9200h,08Fh ; data / ring 0 w / 4KiB blocks / 16-bit
+	dw 0FFFFh,0,9A00h,0CFh ; code / ring 0 r / 4KiB blocks / 32-bit
+	dw 0FFFFh,0,9A00h,0AFh ; code / ring 0 r / 4KiB blocks / 64-bit
+	dw 0FFFFh,0,1111001000000000b,0AFh ; data / ring 3 w / 4KiB blocks / 64-bit
+	dw 0FFFFh,0,1111101000000000b,0AFh ; code / ring 3 r / 4KiB blocks / 64-bit
 	
 GDTR64_size		= $ - GDTR64
