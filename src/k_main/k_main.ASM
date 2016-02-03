@@ -35,8 +35,6 @@ start:
 	; Set video mode 3 (text) 80 x 25
 	mov ax, 03h
 	int 10h
-	
-	; TODO VESA
 
 	call detect_memory
 
@@ -61,21 +59,23 @@ start:
 		or al, 0x1
 		mov cr0, eax
 
-		jmp R0_CODE_SELECTOR:intop
+		jmp TMP_R0_CODE_SELECTOR:intop
 
 	GDTR:
     	dw 4*8-1 ; limit
     	dq GDT ; linear address
 
-	GDT rw 4
-    	dw 0FFFFh,0,9200h,08Fh
-    	dw 0FFFFh,0,9A00h,0CFh
-    	dw 0FFFFh,0,9A00h,0AFh
+	GDT rw 4 ; TMP_R0_NULL_SELECTOR
+		dw 0FFFFh,0,9200h,08Fh ; data / ring 0 w / 4KiB blocks / 16-bit - TMP_R0_DATA_SELECTOR
+		dw 0FFFFh,0,9A00h,0CFh ; code / ring 0 r / 4KiB blocks / 32-bit - TMP_R0_CODE_SELECTOR
 
 crlf		equ 0dh, 0ah
 CR0_PAGING	equ 0x80000000
 LONG_CHECK	equ 0x80000001
 LONG_TEST	equ 0x20000000
+TMP_R0_NULL_SELECTOR	= 0
+TMP_R0_DATA_SELECTOR	= 1 shl 3
+TMP_R0_CODE_SELECTOR	= 2 shl 3
 
 include '../inc/e820.inc'
 include '../inc/functions_16.inc'
@@ -135,11 +135,11 @@ start_long:
 	mov dword [71000h], 72000h + 111b
 
 	; Build the First Page Directory
-	mov dword [72000h], 73000h + 111b ; Entry #1 Points to first page table
-	mov dword [72008h], 74000h + 011b ; Entry #2 Points to second page table
+	mov dword [72000h], 73000h + 011b ; Entry #1 Points to first page table
+	mov dword [72008h], 74000h + 111b ; Entry #2 Points to second page table
 
 	; ================================================================
-	; Create Identity mapped table for first 2MiB
+	; Create Identity mapped table for first 2 MiB
 
 	; Page table entry (256 x 4 byte entries) one entry addresses 4KiB
 	; <-Physical page address->  |        a  wurp
@@ -147,7 +147,7 @@ start_long:
 	
 	; Address of first page table
 	mov edi, 73000h
-	mov eax, 0 + 111b ; Supervisor only page table
+	mov eax, 0 + 011b ; Supervisor only page table
 	mov ecx, 512
 
 	make_page_entries:
@@ -155,7 +155,6 @@ start_long:
 		add edi, 4
 		add eax, 1000h
 		loop make_page_entries
-	; ================================================================
 
 	; Check there is memory available for user applications
 	cmp word [user_mem], 2048
@@ -166,7 +165,7 @@ start_long:
 	; Address of second page table
 	mov [user_mode_enabled], 1
 	mov edi, 74000h
-	mov eax, 200000h + 011b
+	mov eax, 200000h + 111b
 	
 	mov ecx, 256
 
@@ -192,7 +191,31 @@ start_long:
 		; Enable paging
 		mov cr0, eax
 
-		jmp R0_LONG_SELECTOR:main_64
+		; Move GDT to final location
+		mov esi, GDT64
+		mov edi, 0x00001000
+		mov ecx, GDTR64_size
+		rep movsb
+
+		lgdt [GDTR64]
+
+		; Configure TSS
+		lea eax, [k_tss]
+		mov [GDT_R0_TSS + 2], ax
+		lea eax, [k_tss_end]
+		mov [GDT_R0_TSS + 4], al
+		mov [GDT_R0_TSS + 7], ah
+
+		lea eax, [u_tss]
+		mov [GDT_R3_TSS + 2], ax
+		lea eax, [u_tss_end]
+		mov [GDT_R3_TSS + 4], al
+		mov [GDT_R3_TSS + 7], ah
+
+		mov ax, R0_TSS
+		ltr ax
+
+		jmp R0_CODE_SELECTOR:main_64
 
 ;***************************
 ; 64-bit Kernel Entry Point
@@ -205,10 +228,10 @@ include '../inc/sys_64.inc'
 main_64:
 
 	; Save the config file into kernel data before memory gets remapped
-        mov esi, 0500h
-        mov edi, k_config_file
-        mov ecx, 8
-        rep movsb
+    mov esi, 0500h
+    mov edi, k_config_file
+    mov ecx, 8
+    rep movsb
 	
 	; Clear everything out
 	xor rax, rax
@@ -218,7 +241,6 @@ main_64:
 	xor rsi, rsi
 	xor rdi, rdi
 	xor rbp, rbp
-	mov rsp, 0ffffh
 	xor r8, r8
 	xor r9, r9
 	xor r10, r10
@@ -228,6 +250,7 @@ main_64:
 	xor r14, r14
 	xor r15, r15
 
+	mov ax, R0_DATA_SELECTOR
 	mov ds, ax
 	mov es, ax
 	mov ss, ax
@@ -311,10 +334,17 @@ make_interrupt_gates:
 	movsq
 	loop make_interrupt_gates
 
+make_ring_3_call_gate:
+	mov edi, 900h
+	mov esi, ring3_interrupt_gate
+	movsq
+	movsq
+
 	mov word [80h*16], irq_0_handler_clock
 	mov word [81h*16], irq_1_handler_keyboard
-	mov word [88h*16], irq_8_rtc ; Not used currently
+	mov word [88h*16], irq_8_rtc
 	mov word [89h*16], irq_9_pci_device
+	mov word [90h*16], system_call
 
 	mov [k_pit_clocks], 0
 	
@@ -346,42 +376,12 @@ init_pci_devices:
 
 ; Finish setting up memory
 finalise_memory:
-
-	; Move GDT to final location
-	mov esi, GDT64
-	mov edi, 0x00001000
-	mov ecx, GDTR64_size
-	rep movsb
-	
-	; Then load it
-	lgdt [GDTR64]
-
+	mov esp, k_stack_end
 	; Move system/kernel variables and data to final location
 	mov esi, SysVars
 	mov edi, 0x00003200
 	mov ecx, SysVars_size
 	rep movsb
-
-	; Allocate additional kernel and user data
-	; 1 = Free, 2 = In Use, 3 = Reserved
-	push rax rcx rdi
-	
-	; Set additional kernel memory
-	mov rdi, sys_kernel_extra
-	xor rcx, rcx
-	mov rcx, 100000h
-	mov al, 3
-	rep stosb
-
-	cmp [user_mode_enabled], 0
-	je main_entry
-	; Set memory available for user applications
-	mov rdi, sys_free_mem
-	xor rcx, rcx
-	mov rcx, 100000h
-	mov al, 1
-	rep stosb
-	pop rdi rcx rax
 
 main_entry:
 	; Clear the screen starting from line 2
@@ -389,25 +389,53 @@ main_entry:
 	mov rcx, 0
 	call sys_clear_screen
 
-        ; Add config found message
-        mov esi, k_config1_msg
-        mov ecx, k_config1_msg_size
-        call sys_character_print
+	; Add config found message
+	mov esi, k_config1_msg
+	mov ecx, k_config1_msg_size
+	call sys_character_print
 	
 	; Add config file contents
 	mov esi, k_config_file
-        mov ecx, 8
-        call sys_character_print
+	mov ecx, 8
+	call sys_character_print
 	call sys_lb
 	mov al, 1 ; Configure PCI devices
 	call sys_pci_list
 
+	; Load userland memory sections
+	mov esi, user_task
+	mov edi, sys_free_mem
+	mov ecx, user_task_size
+	rep movsb
 
-main_loop:
-	jmp main_loop
+	; Switch to user land
+	; mov rax, sys_free_mem
+	; call sys_switch_user_mode
+
+	cli
+	; Setup first idle kernel task using the current stack
+	mov [k_task_1.r_rip], sys_task_1
+	mov rax, rsp
+	mov [k_task_1.r_rsp], rax
+	mov [k_task_1.r_rbp], rbp
+	mov [k_task_1.r_pid], 1
+	mov [k_process_queue], 1
+
+	; Add second task to the queue using it's own stack
+	mov [k_task_2.r_rip], sys_task_2
+	mov [k_task_2.r_rsp], sys_kernel_extra_top
+	mov [k_task_2.r_pid], 2
+	mov [k_process_queue+1], 2
+	sti
+
+	idle:
+		jmp idle
+
+	hlt
 
 include '../inc/macros_64.inc'
 include '../inc/interrupts_64.inc'
+include '../inc/sched.inc'
 include '../inc/key_handler.inc'
 include '../inc/commandlist.inc'
 include '../drivers/vga.inc'
@@ -416,5 +444,18 @@ include '../drivers/i8254x.inc'
 include '../drivers/rtl8169.inc'
 include '../drivers/key_converter.inc'
 include '../syscalls.ASM'
+
+;***********
+; User mode
+;***********
+
+user_task:
+	mov rbx, app_data_1
+	mov rax, 1
+	int 90h
+	jmp $
+
+app_data_1	    	db 'Hello World!', 0
+user_task_size		= $ - user_task
 
 times   2000h - ($-$$)   db 0 ; Pad out to 8192 bytes long (so we know exactly how large the kernel is)

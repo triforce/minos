@@ -5,11 +5,11 @@
 ; Detect memory
 ; =========================================================
 
-e820_buffer: times 32    	db 0
-e820_bufferLength        	equ $ - e820_buffer
-line				db crlf, 0
-ram_e820h_msg			db 'Memory Available Below 1MB (bytes): ', 0
-ram_88h_msg			db 'Memory Available Above 1MB (kb): ', 0
+e820_buffer: 	times 32    	db 0
+e820_bufferLength        		equ $ - e820_buffer
+line							db crlf, 0
+ram_e820h_msg					db 'Memory Available Below 1MB (bytes): ', 0
+ram_88h_msg						db 'Memory Available Above 1MB (kb): ', 0
 
 detect_memory:
 
@@ -119,7 +119,7 @@ do_e88h:
 
 	.nsupported_88:
 		mov [mem_check], 0
-    		mov al, 'n'
-    		mov ah, 0eh
-    		int 10h
-    		ret
+		mov al, 'n'
+		mov ah, 0eh
+		int 10h
+		ret

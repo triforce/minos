@@ -10,13 +10,18 @@ IDTR:
 	dq 0	; linear address
 
 exception_gate:
-	dw exception and 0FFFFh,R0_LONG_SELECTOR
+	dw exception and 0FFFFh, R0_CODE_SELECTOR
 	dw 8E00h,exception shr 16
 	dd 0,0
 
 interrupt_gate:
-	dw interrupt and 0FFFFh,R0_LONG_SELECTOR
+	dw interrupt and 0FFFFh, R0_CODE_SELECTOR
 	dw 8F00h,interrupt shr 16
+	dd 0,0
+
+ring3_interrupt_gate:
+	dw interrupt and 0FFFFh, R0_CODE_SELECTOR
+	dw 1110111100000000b,interrupt shr 16
 	dd 0,0
 
 exception:
@@ -30,36 +35,61 @@ interrupt:
 
 ; Handle Programmable Interval Timer (PIT) channel 0
 irq_0_handler_clock:
+	; pop rax ; rax contains RIP of task
+	; --------------------
+	; Debug Register - R14
+	; --------------------
+	mov rax, [rsp+0] ; RIP
+	mov r8, rax
+	mov rax, [rsp+24] ; RSP
+	mov r9, rax
 	push rax
-	mov rax, 1
-	adc [k_pit_clocks], rax
-	xor rax, rax
-	
-	; Flash a 0/1 in the top right corner to show clock ticking
-	; mov rax, [k_pit_clocks]
-	; and al, 1
-	; add al, 48
-	; mov [0x000B809A], al
-	
-	; If we have a wait action then handle it
-	push rbx
-	mov rbx, [k_countdown]
-	
-	handle_timer:
-		or rbx, rbx
-		jz done_handle_timer
-		dec rbx
-		mov [k_countdown], rbx
-		
-	done_handle_timer:
-		pop rbx
-	
+	mov rax, [k_pit_clocks]
+	inc rax
+	mov [k_pit_clocks], rax
+
+	; Flash a 0/1 in the top corner of the screen to indicate ticks
+	and al, 1
+    add al, 48
+	mov byte[0x000B809E], al
 	mov al, 20h
 	out 20h, al
 	pop rax
-	iretq
+
+	; Find the next task to load in the queue
+	call reschedule
+	cmp r14, 0
+	jne end_irq0
+
+	done_irq0:
+		; cli
+		mov ax, R0_DATA_SELECTOR
+		mov ds, ax
+		mov es, ax
+		mov fs, ax
+		mov gs, ax
+		; mov rbp, 0x2fffe2 ;RBP
+		; mov rax, 0x300000 ;RSP
+		mov rax, [k_current_process.r_rsp]
+
+		push R0_DATA_SELECTOR
+		push rax
+		pushf
+
+		; Enable interrupts
+		pop rax
+		or rax, 0x200
+		push rax
+
+		push R0_CODE_SELECTOR
+		; push rbx ; RIP
+		push [k_current_process.r_rip]
+
+	end_irq0:
+		iretq
 
 irq_1_handler_keyboard:
+	cli
 	push rax
 	call start_kb
 	in al, 61h
@@ -68,6 +98,7 @@ irq_1_handler_keyboard:
 	out 20h, al
 	out 0A0h, al
 	pop rax
+	sti
 	iretq
 	
 irq_8_rtc:
@@ -86,6 +117,30 @@ irq_9_pci_device:
 	out 0A0h, al
 	pop rax
 	iretq
+
+; ====================================
+; system_call
+; ----------------
+; IN  - rax = Call number
+;	  - rbx = Parameters
+; ====================================
+
+system_call:
+	push rax rbx rcx rdx
+	cmp rax, 1
+	je call_sys_character_print
+	jmp system_call_ret
+
+	call_sys_character_print:
+		mov esi, ebx
+		mov ecx, 12
+		call sys_character_print
+
+	system_call_ret:
+		mov al, 20h
+		out 20h, al
+		pop rdx rcx rbx rax
+		iretq
 
 reboot:
 	mov al, 0FEh

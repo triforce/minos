@@ -16,10 +16,10 @@ jmp start
 nop
 
 ; File System Info, legacy BIOS parameter block (bpb)
-OEM:				db "MIN OS"
+OEM:					db "MIN OS"
 bpbBytesPerSector:		dw 512
 bpbSectorsPerTrack:		dw 18
-bpbHeadsPerCylinder:		dw 2
+bpbHeadsPerCylinder:	dw 2
 bsDriveNumber:			db 0
 bsVolumeLabel:			db "minOS    "
 
@@ -30,8 +30,8 @@ start:
 	; Set up stack and segment registers
 	; Stop interrupts
 	cli
-	xor ax, ax  
-	mov ds, ax 
+	xor ax, ax
+	mov ds, ax
 	mov es, ax
 	mov fs, ax
 	mov gs, ax

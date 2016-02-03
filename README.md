@@ -1,13 +1,15 @@
 minOS
 =====
 
-A simple hobby operating system based on a monolithic kernel design written purely in assembly language.
+A minimal bare bones operating system based on a monolithic kernel design written purely in Assembly language.
 
 Legacy boots from a pre-built disk image with planned support for GRUB multiboot.
 
+Kernel size: 8 KiB
+
 System Requirements:
 
-* RAM: 2MB - (3MB for User Mode)
+* RAM: 3 MiB
 * CPU: x86-64
 
 Microprocessors tested on:

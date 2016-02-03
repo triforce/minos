@@ -11,6 +11,7 @@ detect_kb:
 	; Some keys have different scan codes
 
 start_kb:
+	push rax rbx rcx rdx
 	xor rax, rax
 	xor rbx, rbx
 	xor rcx, rcx
@@ -57,6 +58,7 @@ check_table:
 		jmp end_kb
 
 	end_kb:
+		pop rax rbx rcx rdx
 		ret
 
 ; All commands currently only fit in a dword
@@ -69,7 +71,7 @@ check_command:
 	je sys_show_mem_c
 	cmp dword [k_command_buffer], '-alo'
 	je sys_alloc_mem_c
-	
+
 	jmp check_command_done
 
 	sys_cpu_speed_c:

@@ -13,7 +13,7 @@
 ; ===============================
 
 sys_hex_print:
-	push rbx rax
+	push rax rbx rcx
 	mov rbx, hex_list
 
 	push rax
@@ -32,7 +32,7 @@ sys_hex_print:
 	mov ecx, 1
 	call sys_character_print
 
-	pop rbx rax
+	pop rcx rbx rax
 	ret
 	
 ; ===================================
@@ -67,7 +67,7 @@ sys_dec_convert:
 		pop rbx
 		loop .sys_dec_print_do_digit
 
-	pop rax rbx rcx rdx
+		pop rax rbx rcx rdx
         ret
 
 ; ===========================================
@@ -155,6 +155,7 @@ sys_command_print:
 ; IN - None
 ; ============================
 sys_lb:
+	push rax rbx rcx rdx
 	mov [ScreenWidth], MinX
 	mov ebx, MinX
 	mov eax, [ScreenLines]
@@ -178,6 +179,7 @@ sys_lb:
 	mov esi, k_main_msg
 	mov ecx, k_main_msg_size
 	call sys_character_print
+	pop rdx rcx rbx rax
 	ret
 
 ; ===================================
@@ -189,7 +191,7 @@ sys_lb:
 ; ===================================
 
 sys_character_print:
-        ; Global text printer
+    ; Global text printer
 	pushaq
         mov ax, 0x0F0E
         mov dx, 0x03D4
@@ -300,7 +302,7 @@ sys_clear_screen:
 	mov [0B8000h + rbx], rax
 	cmp rbx, rcx
 	jne start_clear
-	pop rax rbx
+	pop rbx rax
 	xor rcx, rcx
 	ret
 
@@ -340,10 +342,10 @@ sys_cpu_speed:
 	mov ecx, k_speed_msg_size
 	call sys_character_print
 	
-        xor rax, rax
-        xor rbx, rbx
-        xor rcx, rcx
-        xor rdx, rdx
+    xor rax, rax
+    xor rbx, rbx
+    xor rcx, rcx
+    xor rdx, rdx
 
 	mov rax, 1
 	cpuid
@@ -374,7 +376,7 @@ sys_cpu_speed_wait2:
 	mov rax, [k_speed]
 	call sys_dec_convert
 
-        mov esi, number_buf
+	mov esi, number_buf
 	mov ecx, dword [number_count]
 	call sys_character_print
 
@@ -383,14 +385,14 @@ sys_cpu_speed_wait2:
 
 done_sys_cpu_speed:
 	call sys_lb
-	pop rax rbx rcx rdx
+	pop   rdx rcx rbx rax
 	ret
 	
 ; =============================
 ; sys_wait
 ; ----------------
 ; Wait for x amount of time
-; IN - RAX = Time to wait in ms
+; IN - rax = Time to wait in ms
 ; =============================
 
 sys_wait:
@@ -525,6 +527,39 @@ sys_show_mem:
 	
 		mov [number_count], 0
 		mov [number_buf], 0
-	call sys_lb	
-	pop rax rcx rbx
-	ret
+		call sys_lb
+		pop rax rcx rbx
+		ret
+
+; ====================================
+; sys_switch_user_mode
+; ----------------
+; IN  - rax = User program location
+; ====================================
+
+sys_switch_user_mode:
+	; Let's head to ring 3 userland
+	mov rbx, rax
+	xor rax, rax
+
+	cli
+	mov ax, 0x1B ; R3_DATA_SELECTOR | 0x3
+	mov ds, ax
+	mov es, ax
+	mov fs, ax
+	mov gs, ax
+
+	mov rax, rsp
+
+	push 0x1B ; R3_DATA_SELECTOR | 0x3
+	push rax
+	pushf
+
+	; Enable interrupts in user mode
+	pop rax
+	or rax, 0x200
+	push rax
+
+	push 0x23 ; R3_CODE_SELECTOR | 0x3
+	push rbx
+	iretq
