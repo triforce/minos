@@ -6,12 +6,14 @@
 ; =========================================================
 
 reschedule:
-	cli ; Interrupts will only get renabled after a successful task
+	cli ; Interrupts will only get renabled after a successful task switch
 	pushaq
 	xor rax, rax
 	xor rbx, rbx
+	xor rcx, rcx
 	xor rdx, rdx
 	xor r14, r14
+	xor r15, r15
 
 	; xor rax, rax
 	mov [k_queue_empty], 0
@@ -26,47 +28,76 @@ reschedule:
 		cmp al, 0
 		jne check_current
 		inc rbx
-		cmp rbx, 10
+		cmp rbx, MAX_PROCESSES - 1
 		; Are we at the end? If so loop back around ONCE
-		je loop_back_once
+		jge loop_back_once
 		jmp check_queue
 
 		check_current:
 			cmp al, byte[k_current_process.r_pid]
 			je pid_matches
-
 			jmp found_next_task
 
 		loop_back_once:
-			cmp rdx, 1
-			je exit_0
-			mov rdx, 1
+			cmp dh, 1
+			je exit_00
+			mov dh, 1
 			mov rbx, 0
 			jmp check_queue
 
 	found_next_task:
 		jmp load_task
 
-	reset_count:
+	reset_count_once:
+		cmp dl, 1
+		je exit_02
+		mov dl, 1
 		mov rbx, 0
-		jmp find_next_free ; TODO If the queue is full we will have a problem!
+		jmp find_next_free
+
+	check_empty_once:
+		cmp dl, 1
+		je exit_02
+		mov dl, 1
+		mov rbx, 0
+		jmp check_empty
 
 	pid_matches:
 		; Move this pid to next free task slot, must save where it left off first
 		mov rcx, rbx
 		mov ah, al ; ah = task id
+		push rbx
+		; Check if anything else in the queue, if not then just exit
+		inc rbx
+		check_empty:
+			mov al, byte[k_process_queue+rbx]
+			cmp al, 0
+			jne pid_matches_cont
+			inc rbx
+			cmp rbx, MAX_PROCESSES - 1
+			je check_empty_once
+			jmp check_empty
 
-		mov byte[k_process_queue+rbx], 0 ; Clear current byte
-		; je reset_count
+		pid_matches_cont:
+			; cmp ah, al
+			; je exit_sched
+			mov dl, 0 ; Reset the count
+			pop rbx
+			mov byte[k_process_queue+rbx], 0 ; Clear current byte
+			inc rbx
+			cmp rbx, MAX_PROCESSES - 1
+			jle find_next_free
+			mov rbx, 0
+			mov dl, 1
 
 		find_next_free:
 			mov al, byte[k_process_queue+rbx]
 			cmp al, 0
 			je found_free_add_here
 			inc rbx
-			cmp rbx, 10
-			; Are we at the end? If so the queue is full so leave!
-			je exit_02
+			cmp rbx, MAX_PROCESSES - 1
+			; Are we at the end? If so loop back around once
+			jge reset_count_once
 			jmp find_next_free
 
 		found_free_add_here:
@@ -74,8 +105,9 @@ reschedule:
 			; rcx contains index where we left off before
 			mov rbx, rcx
 			inc rbx
-			cmp rbx, 10
-			je loop_back_once
+			cmp rbx, MAX_PROCESSES - 1
+			jge loop_back_once
+			; mov rbx, 0
 			jmp check_queue
 
 	start_first_task:
@@ -89,6 +121,7 @@ reschedule:
 	load_task:
 		mov byte[0x000B8094], al
 		mov bl, al
+		xor rax, rax
 		
 		mov rax, k_task_1
 		cmp byte[k_task_1.r_pid], bl
@@ -189,7 +222,7 @@ reschedule:
 		cmp byte[k_task_10.r_pid], bl
 		je update_previous_task
 
-		jmp exit_01 ; No valid task
+		jmp exit_sched ; No previous task
 
 		update_previous_task:
 			mov rdx, [k_previous_process.r_rip]
@@ -203,48 +236,20 @@ reschedule:
 
 		jmp exit_sched
 
-	exit_0:
+	exit_00:
 		mov r14, 0xDEAD0 ; Task queue is empty
+		mov r15, qword[k_process_queue]
 		jmp exit_sched
 	exit_01:
-		mov r14, 0xDEAD1 ; No valid task matching pid
-		jmp exit_sched
+		mov r14, 0xDEAD1 ; Failed to load task
+		mov cl, [k_id_count]
+		mov r15, qword[k_process_queue]
+		jmp $
 	exit_02:
 		mov r14, 0xDEAD2 ; Task queue is full
-		jmp exit_sched
+		mov r15, qword[k_process_queue]
+		jmp $
 	exit_sched:
 		xor rax, rax
 		popaq
 	ret
-
-; Task demos
-; ==========
-; Two simple tasks to demonstrate multitasking
-
-sys_task_1:
-	; mov al, [k_process_variable1]
-	; inc al
-	; mov [k_process_variable1], al
-	mov byte[0x000B8098], 'a'
-	mov byte[0x000B8098], 'b'
-	mov byte[0x000B8098], 'c'
-	mov byte[0x000B8098], 'd'
-	mov byte[0x000B8098], 'e'
-	mov byte[0x000B8098], 'f'
-	mov byte[0x000B8098], 'g'
-	mov byte[0x000B8098], 'h'
-	jmp sys_task_1
-
-sys_task_2:
-	; mov al, [k_process_variable2]
-	; inc al
-	; mov [k_process_variable2], al
-	mov byte[0x000B809A], '1'
-	mov byte[0x000B809A], '2'
-	mov byte[0x000B809A], '3'
-	mov byte[0x000B809A], '4'
-	mov byte[0x000B809A], '5'
-	mov byte[0x000B809A], '6'
-	mov byte[0x000B809A], '7'
-	mov byte[0x000B809A], '8'
-	jmp sys_task_2

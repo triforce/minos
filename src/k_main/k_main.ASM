@@ -5,6 +5,16 @@
 ; Main kernel
 ; =========================================================
 
+; ---------------
+; Debug Registers
+; ---------------
+; When errors occur the following registers are written to:-
+;
+; r12 - Misc
+; r13 - Application
+; r14 - Scheduler
+; r15 - System call
+
 format binary
 
 use16
@@ -181,9 +191,9 @@ start_long:
 		mov eax, 70000h
 		mov cr3, eax
 
-		mov ecx, 0C0000080h          ; EFER MSR
+		mov ecx, 0C0000080h ; EFER MSR
 		rdmsr
-		or eax, 1 shl 8             ; Enable long mode
+		or eax, 1 shl 8 ; Enable long mode
 		wrmsr
 
 		mov eax, cr0
@@ -212,7 +222,7 @@ start_long:
 		mov [GDT_R3_TSS + 4], al
 		mov [GDT_R3_TSS + 7], ah
 
-		mov ax, R0_TSS
+		mov ax, R3_TSS
 		ltr ax
 
 		jmp R0_CODE_SELECTOR:main_64
@@ -402,60 +412,46 @@ main_entry:
 	mov al, 1 ; Configure PCI devices
 	call sys_pci_list
 
-	; Load userland memory sections
-	mov esi, user_task
-	mov edi, sys_free_mem
-	mov ecx, user_task_size
-	rep movsb
-
-	; Switch to user land
-	; mov rax, sys_free_mem
-	; call sys_switch_user_mode
+	; Clear process queue
+	mov edi, k_process_queue
+	mov ecx, 10
+	mov ax, 0
+	rep stosb
 
 	cli
-	; Setup first idle kernel task using the current stack
-	mov [k_task_1.r_rip], sys_task_1
-	mov rax, rsp
-	mov [k_task_1.r_rsp], rax
-	mov [k_task_1.r_rbp], rbp
-	mov [k_task_1.r_pid], 1
-	mov [k_process_queue], 1
-
-	; Add second task to the queue using it's own stack
-	mov [k_task_2.r_rip], sys_task_2
-	mov [k_task_2.r_rsp], sys_kernel_extra_top
-	mov [k_task_2.r_pid], 2
-	mov [k_process_queue+1], 2
+	; Setup idle kernel task using the current stack
+	mov al, 1
+	call sys_start_task
+	mov al, 2
+	call sys_start_task
 	sti
+
+	; Run a test user program
+	mov rax, u_prog_1
+	mov rcx, u_prog_1_size
+	call sys_load_program
 
 	idle:
 		jmp idle
 
 	hlt
 
+; Core functions
 include '../inc/macros_64.inc'
 include '../inc/interrupts_64.inc'
 include '../inc/sched.inc'
 include '../inc/key_handler.inc'
 include '../inc/commandlist.inc'
+; Drivers
 include '../drivers/vga.inc'
 include '../drivers/pci.inc'
 include '../drivers/i8254x.inc'
 include '../drivers/rtl8169.inc'
 include '../drivers/key_converter.inc'
+; System calls and associated routines
 include '../syscalls.ASM'
-
-;***********
-; User mode
-;***********
-
-user_task:
-	mov rbx, app_data_1
-	mov rax, 1
-	int 90h
-	jmp $
-
-app_data_1	    	db 'Hello World!', 0
-user_task_size		= $ - user_task
+; Programs
+include '../apps/userland.inc'
+include '../apps/system.inc'
 
 times   2000h - ($-$$)   db 0 ; Pad out to 8192 bytes long (so we know exactly how large the kernel is)

@@ -58,10 +58,10 @@ check_table:
 		jmp end_kb
 
 	end_kb:
-		pop rax rbx rcx rdx
+		pop rdx rcx rbx rax
 		ret
 
-; All commands currently only fit in a dword
+; All commands currently only fit in a dword for simplicity
 check_command:
 	cmp dword [k_command_buffer], '-spe'
 	je sys_cpu_speed_c
@@ -71,8 +71,16 @@ check_command:
 	je sys_show_mem_c
 	cmp dword [k_command_buffer], '-alo'
 	je sys_alloc_mem_c
+	cmp dword [k_command_buffer], '-tas'
+	je sys_start_kernel_task
 
 	jmp check_command_done
+
+	sys_start_kernel_task:
+		mov al, byte[k_command_buffer+5]
+		call sys_convert_ascii_dec
+		call sys_start_task
+		jmp check_command_done
 
 	sys_cpu_speed_c:
 		call sys_cpu_speed

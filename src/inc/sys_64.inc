@@ -46,6 +46,7 @@ struc k_task r_rip, r_rsp, r_rbp, r_pid
 	.r_pid dq r_pid ;24
 }
 
+k_id_count			db 0
 MAX_PROCESSES		equ 10
 k_process_queue		rb MAX_PROCESSES ; Contains task PID's
 k_previous_process	k_task 0,0,0,0

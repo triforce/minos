@@ -2,8 +2,86 @@
 ; minos -- a hobby operating system written for x86-64
 ; Copyright (C) 2010-2016
 ;
-; System Calls
+; System Calls & Routines
 ; =========================================================
+
+; ===========================
+; sys_call
+; --------
+; Standard system call
+; IN  - rax = Call number
+;	  - rbx = Parameters/Data
+; ===========================
+
+sys_call:
+	pushaq
+	cmp rax, 0
+	je call_task_exit
+	cmp rax, 1
+	je call_sys_character_print
+	; No matches - bye!
+	jmp sys_call_ret
+
+	call_task_exit:
+		xor rax, rax
+		xor rbx, rbx
+		find_pid_in_queue:
+			mov al, byte[k_process_queue+rbx]
+			; Check if its zero
+			cmp al, byte[k_current_process.r_pid]
+			je delete_task
+			inc rbx
+			cmp rbx, MAX_PROCESSES - 1
+			; Cant find it? Major problem..
+			je exit_task
+			jmp find_pid_in_queue
+
+			delete_task:
+				mov byte[k_process_queue+rbx], 0
+				jmp exit_task
+
+			exit_task:
+				popaq
+				sti
+				jmp idle
+
+	call_sys_character_print:
+		mov rax, rbx
+		call sys_get_string_size
+		mov esi, ebx
+		mov ecx, eax ; Limited to a 32-bit number currently
+		call sys_character_print
+		jmp sys_call_ret
+
+	sys_call_ret:
+		popaq
+		ret
+
+; ======================================
+; sys_get_string_size
+; -------------
+; Get size of null terminated char array
+; IN - rax = pointer to string byte array
+; OUT - rax = size of string
+; ======================================
+
+sys_get_string_size:
+	push rbx rcx
+	mov rbx, rax
+	mov rcx, rax
+	sys_get_string_size_loop:
+		mov rsi, rcx
+		lodsb
+		cmp al, 0
+		je sys_get_string_size_done
+		inc rcx
+		jmp sys_get_string_size_loop
+
+sys_get_string_size_done:
+	sub rcx, rbx
+	mov rax, rcx
+	pop rcx rbx
+	ret
 
 ; ===============================
 ; sys_hex_print
@@ -37,7 +115,7 @@ sys_hex_print:
 	
 ; ===================================
 ; sys_dec_convert
-; -------------
+; ---------------
 ; Print decimal numbers to the screen
 ; IN  - ax/eax/rax = Decimal to print
 ; OUT - number_buf = Contains ascii
@@ -70,9 +148,9 @@ sys_dec_convert:
 		pop rax rbx rcx rdx
         ret
 
-; ===========================================
+; ==========================================
 ; sys_convert_ascii_dec
-; -------------
+; ---------------------
 ; Print decimal numbers to the screen
 ; IN  - al = ASCII representation of decimal
 ; OUT - al = Decimal
@@ -101,45 +179,46 @@ sys_convert_ascii_dec:
 	je is_0
 	
 	is_1:
-	mov al, 1
-	jmp sys_convert_ascii_dec_done
+		mov al, 1
+		jmp sys_convert_ascii_dec_done
 	is_2:
-	mov al, 2
-	jmp sys_convert_ascii_dec_done
+		mov al, 2
+		jmp sys_convert_ascii_dec_done
 	is_3:
-	mov al, 3
-	jmp sys_convert_ascii_dec_done
+		mov al, 3
+		jmp sys_convert_ascii_dec_done
 	is_4:
-	mov al, 4
-	jmp sys_convert_ascii_dec_done
+		mov al, 4
+		jmp sys_convert_ascii_dec_done
 	is_5:
-	mov al, 5
-	jmp sys_convert_ascii_dec_done
+		mov al, 5
+		jmp sys_convert_ascii_dec_done
 	is_6:
-	mov al, 6
-	jmp sys_convert_ascii_dec_done
+		mov al, 6
+		jmp sys_convert_ascii_dec_done
 	is_7:
-	mov al, 7
-	jmp sys_convert_ascii_dec_done
+		mov al, 7
+		jmp sys_convert_ascii_dec_done
 	is_8:
-	mov al, 8
-	jmp sys_convert_ascii_dec_done
+		mov al, 8
+		jmp sys_convert_ascii_dec_done
 	is_9:
-	mov al, 9
-	jmp sys_convert_ascii_dec_done
+		mov al, 9
+		jmp sys_convert_ascii_dec_done
 	is_0:
-	mov al, 0
-	jmp sys_convert_ascii_dec_done
+		mov al, 0
+		jmp sys_convert_ascii_dec_done
 	
 	sys_convert_ascii_dec_done:
-	ret
+		ret
 
 ; ===================================
 ; sys_command_print
-; -------------------
+; -----------------
 ; Handle command line input
 ; IN - esi = string to print
 ;      ecx = number of chars to print
+; OUT - None
 ; ===================================
 
 sys_command_print:
@@ -152,7 +231,7 @@ sys_command_print:
 ; sys_lb
 ; ------
 ; Adds new line to the screen
-; IN - None
+; IN /OUT - None
 ; ============================
 sys_lb:
 	push rax rbx rcx rdx
@@ -188,6 +267,7 @@ sys_lb:
 ; Print characters to the screen
 ; IN - esi = string to print
 ;      ecx = number of chars to print
+; OUT - None
 ; ===================================
 
 sys_character_print:
@@ -206,22 +286,22 @@ sys_character_print:
         movzx ebx, ax
 
        .character_printLoop:
-		; Print each character
-		lodsb
-		; Set blue background and white foreground
-		; Set screen colours
-		; ax holds screen colors and char to write
+			; Print each character
+			lodsb
+			; Set blue background and white foreground
+			; Set screen colours
+			; ax holds screen colors and char to write
 
-		mov ah, 256_white_black
-		cmp al, 10
+			mov ah, 256_white_black
+			cmp al, 10
 
-		je .handleCR
-		cmp al, 13
-		je .handleCR
+			je .handleCR
+			cmp al, 13
+			je .handleCR
 
-		mov [es:(ebx*2+0xB8000)], ax
-		inc bx
-		jmp .nextChar
+			mov [es:(ebx*2+0xB8000)], ax
+			inc bx
+			jmp .nextChar
 
 		.handleCR:
 			; Currently this only supports 80x25 mode
@@ -282,6 +362,7 @@ scroll_screen_check:
 ; ----------------
 ; Clears the screen
 ; IN - RCX = Lines to clear from
+; OUT - None
 ; ===============================
 
 sys_clear_screen:
@@ -308,7 +389,7 @@ sys_clear_screen:
 
 ; ==============================================
 ; sys_pci_list
-; ----------------
+; ------------
 ; Output PCI device list in device/vendor format
 ; IN - al = 0/1 to configure devices as well
 ; OUT - None
@@ -329,7 +410,7 @@ sys_pci_list:
 
 ; ================
 ; sys_cpu_speed
-; ----------------
+; -------------
 ; Test CPU speed
 ; IN / OUT - None
 ; ================
@@ -390,7 +471,7 @@ done_sys_cpu_speed:
 	
 ; =============================
 ; sys_wait
-; ----------------
+; --------
 ; Wait for x amount of time
 ; IN - rax = Time to wait in ms
 ; =============================
@@ -414,7 +495,7 @@ sys_wait:
 
 ; =======================================
 ; sys_allom
-; ----------------
+; ---------
 ; Allocate memory
 ; IN  - rcx = Number of bytes to allocate
 ; OUT - rax = Starting address
@@ -487,7 +568,7 @@ sys_allom:
 
 ; ====================================
 ; sys_show_mem
-; ----------------
+; ------------
 ; Show total free memory
 ; IN  - cl = 1 (bytes), 2(KiB), 3(MiB)
 ; OUT - Print total to sreen
@@ -531,11 +612,197 @@ sys_show_mem:
 		pop rax rcx rbx
 		ret
 
-; ====================================
-; sys_switch_user_mode
+
+; ========================
+; sys_start_task
+; --------------
+; Start a system task
+; IN  - al = 1 task number
+; OUT - None
+; ========================
+
+sys_start_task:
+	pushaq
+	cli
+	mov ah, al
+	xor rbx, rbx
+	xor rcx, rcx
+	find_free_slot:
+		mov al, byte[k_process_queue+rbx]
+		; Check if its zero
+		cmp al, 0
+		je create_task
+		inc rbx
+		cmp rbx, MAX_PROCESSES - 1
+		je sys_start_task_done
+		jmp find_free_slot
+
+		create_task:
+			; Create task at index rbx
+			mov cl, [k_id_count]
+			inc cl
+			mov [k_id_count], cl
+			mov byte[k_process_queue+rbx], cl
+
+			; Debug
+			; mov r15, qword[k_process_queue]
+			; jmp $
+
+			; Now configure task slot
+			mov bl, ah
+			xor rax, rax
+			mov rax, rsp ; Just use current kernel stack
+			cmp bl, 1
+			je start_task_1
+			cmp bl, 2
+			je start_task_2
+			cmp bl, 3
+			je start_task_3
+			cmp bl, 4
+			je start_task_4
+			cmp bl, 5
+			je start_task_5
+			cmp bl, 6
+			je start_task_6
+			cmp bl, 7
+			je start_task_7
+			cmp bl, 8
+			je start_task_8
+			cmp bl, 9
+			je start_task_9
+			jmp no_task_slot
+
+			start_task_1:
+				mov [k_task_1.r_rip], sys_task_1
+				mov [k_task_1.r_rsp], rax
+				mov [k_task_1.r_rbp], rbp
+				mov [k_task_1.r_pid], rcx
+				jmp sys_start_task_done
+			start_task_2:
+				mov [k_task_2.r_rip], sys_task_2
+				mov [k_task_2.r_rsp], rax
+				mov [k_task_2.r_rbp], rbp
+				mov [k_task_2.r_pid], rcx
+				jmp sys_start_task_done
+			start_task_3:
+				mov [k_task_3.r_rip], sys_task_3
+				mov [k_task_3.r_rsp], rax
+				mov [k_task_3.r_rbp], rbp
+				mov [k_task_3.r_pid], rcx
+				jmp sys_start_task_done
+			start_task_4:
+				mov [k_task_4.r_rip], sys_task_4
+				mov [k_task_4.r_rsp], rax
+				mov [k_task_4.r_rbp], rbp
+				mov [k_task_4.r_pid], rcx
+				jmp sys_start_task_done
+			start_task_5:
+				mov [k_task_5.r_rip], sys_task_5
+				mov [k_task_5.r_rsp], rax
+				mov [k_task_5.r_rbp], rbp
+				mov [k_task_5.r_pid], rcx
+				jmp sys_start_task_done
+			start_task_6:
+				mov [k_task_6.r_rip], sys_task_6
+				mov [k_task_6.r_rsp], rax
+				mov [k_task_6.r_rbp], rbp
+				mov [k_task_6.r_pid], rcx
+				jmp sys_start_task_done
+			start_task_7:
+				mov [k_task_7.r_rip], sys_task_7
+				mov [k_task_7.r_rsp], rax
+				mov [k_task_7.r_rbp], rbp
+				mov [k_task_7.r_pid], rcx
+				jmp sys_start_task_done
+			start_task_8:
+				mov [k_task_8.r_rip], sys_task_8
+				mov [k_task_8.r_rsp], rax
+				mov [k_task_8.r_rbp], rbp
+				mov [k_task_8.r_pid], rcx
+				jmp sys_start_task_done
+			start_task_9:
+				mov [k_task_9.r_rip], sys_task_9
+				mov [k_task_9.r_rsp], rax
+				mov [k_task_9.r_rbp], rbp
+				mov [k_task_9.r_pid], rcx
+				jmp sys_start_task_done
+
+	no_task_slot:
+		mov r15, 0xDEAD1
+		jmp $
+
+	sys_start_task_done:
+		sti
+		popaq
+		ret
+
+; ==============================
+; sys_check_queue_empty
+; ---------------------
+; IN  - None
+; OUT - rbx = Returns 0 if empty
+; ==============================
+
+sys_check_queue_empty:
+	push rax
+	xor al, al
+	xor rbx, rbx
+
+	sys_check_queue_empty_loop:
+		mov al, byte[k_process_queue+rbx]
+		cmp al, 0
+		jne sys_check_queue_empty_isNotEmpty
+		inc rbx
+		cmp rbx, 9
+		je sys_check_queue_empty_isEmpty
+		jmp sys_check_queue_empty_loop
+
+	sys_check_queue_empty_isEmpty:
+		mov rbx, 0
+		jmp sys_check_queue_empty_done
+
+	sys_check_queue_empty_isNotEmpty:
+		mov rbx, 1
+		jmp sys_check_queue_empty_done
+
+sys_check_queue_empty_done:
+	pop rax
+	ret
+
+; =================================
+; sys_load_program (stub)
 ; ----------------
 ; IN  - rax = User program location
-; ====================================
+; 		rcx = Size of program
+; OUT - None
+; =================================
+
+sys_load_program:
+	pushaq
+	; Load ring 3 program into user memory section
+	push rax rcx
+	mov rsi, rax
+	mov rdi, sys_free_mem
+	rep movsb
+	; Execute ring 3 program
+	mov rax, sys_free_mem
+	call sys_switch_user_mode
+	; Wipe it out
+	pop rcx rax
+	mov rax, 0x0
+	mov rdi, sys_free_mem
+	rep stosb
+
+	sys_load_program_done:
+		popaq
+		ret
+
+; =================================
+; sys_switch_user_mode
+; --------------------
+; IN  - rax = User program location
+; OUT - None
+; =================================
 
 sys_switch_user_mode:
 	; Let's head to ring 3 userland

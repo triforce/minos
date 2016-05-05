@@ -43,24 +43,40 @@ irq_0_handler_clock:
 	mov r8, rax
 	mov rax, [rsp+24] ; RSP
 	mov r9, rax
-	push rax
+	push rax ; Save current state
 	mov rax, [k_pit_clocks]
 	inc rax
 	mov [k_pit_clocks], rax
 
-	; Flash a 0/1 in the top corner of the screen to indicate ticks
+	; Flash a 0/1 in the top corner of the screen to indicate ticks (kernel heartbeat)
 	and al, 1
     add al, 48
 	mov byte[0x000B809E], al
 	mov al, 20h
 	out 20h, al
-	pop rax
+	
+	pop rax ; Restore state
+	mov r10, 0x0
+
+	; If the process queue is empty then just return
+	cli
+	call sys_check_queue_empty
+	test rbx, rbx
+	jne start_reschedule
+	mov r10, 0xF
+	sti
+	iretq
 
 	; Find the next task to load in the queue
-	call reschedule
-	cmp r14, 0
-	jne end_irq0
+	start_reschedule:
+		call reschedule
+		; If something went wrong and we somehow end up back here just return
+		cmp r14, 0
+		je done_irq0
+		sti
+		iretq
 
+	; Return to a process
 	done_irq0:
 		; cli
 		mov ax, R0_DATA_SELECTOR
@@ -106,41 +122,27 @@ irq_8_rtc:
 	add qword [k_clocks], 1
 	mov al, 20h
 	out 20h, al
-	pop rdi rax
+	pop rax rdi
 	iretq
 	
 irq_9_pci_device:
 	push rax
-	; TODO
+	; TODO pci things
 	mov al, 20h
 	out 20h, al
 	out 0A0h, al
 	pop rax
 	iretq
 
-; ====================================
-; system_call
-; ----------------
-; IN  - rax = Call number
-;	  - rbx = Parameters
-; ====================================
-
 system_call:
-	push rax rbx rcx rdx
-	cmp rax, 1
-	je call_sys_character_print
-	jmp system_call_ret
-
-	call_sys_character_print:
-		mov esi, ebx
-		mov ecx, 12
-		call sys_character_print
-
-	system_call_ret:
-		mov al, 20h
-		out 20h, al
-		pop rdx rcx rbx rax
-		iretq
+	cli
+	push rax
+	mov al, 20h
+	out 20h, al
+	pop rax
+	call sys_call
+	sti
+	iretq
 
 reboot:
 	mov al, 0FEh
