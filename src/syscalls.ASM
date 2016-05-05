@@ -48,8 +48,8 @@ sys_call:
 	call_sys_character_print:
 		mov rax, rbx
 		call sys_get_string_size
-		mov esi, ebx
-		mov ecx, eax ; Limited to a 32-bit number currently
+		mov rsi, rbx
+		mov rcx, rax
 		call sys_character_print
 		jmp sys_call_ret
 
@@ -236,13 +236,13 @@ sys_command_print:
 sys_lb:
 	push rax rbx rcx rdx
 	mov [ScreenWidth], MinX
-	mov ebx, MinX
-	mov eax, [ScreenLines]
-	mul ebx
-	mov [ScreenYPos], eax
-	sub [ScreenWidth], ebx
-	add ebx, [ScreenWidth]
-	add ebx, [ScreenYPos]
+	mov rbx, MinX
+	mov rax, [ScreenLines]
+	mul rbx
+	mov [ScreenYPos], rax
+	sub [ScreenWidth], rbx
+	add rbx, [ScreenWidth]
+	add rbx, [ScreenYPos]
 	call scroll_screen_check
 	inc [ScreenLines]
 
@@ -255,8 +255,8 @@ sys_lb:
 	mov ah, bl
 	out dx, ax
 
-	mov esi, k_main_msg
-	mov ecx, k_main_msg_size
+	mov rsi, k_main_msg
+	mov rcx, k_main_msg_size
 	call sys_character_print
 	pop rdx rcx rbx rax
 	ret
@@ -283,7 +283,7 @@ sys_character_print:
         out dx, al
         inc dx
         in al, dx
-        movzx ebx, ax
+        movzx rbx, ax
 
        .character_printLoop:
 			; Print each character
@@ -299,27 +299,27 @@ sys_character_print:
 			cmp al, 13
 			je .handleCR
 
-			mov [es:(ebx*2+0xB8000)], ax
+			mov [es:(rbx*2+0xB8000)], ax
 			inc bx
 			jmp .nextChar
 
 		.handleCR:
 			; Currently this only supports 80x25 mode
 			mov [ScreenWidth], MinX
-			mov ebx, MinX
-			mov eax, [ScreenLines]
-			mul ebx
-			mov [ScreenYPos], eax
+			mov rbx, MinX
+			mov rax, [ScreenLines]
+			mul rbx
+			mov [ScreenYPos], rax
 
-			sub [ScreenWidth], ebx
-			add ebx, [ScreenWidth]
-			add ebx, [ScreenYPos]
+			sub [ScreenWidth], rbx
+			add rbx, [ScreenWidth]
+			add rbx, [ScreenYPos]
 
 			call scroll_screen_check
 
 			inc [ScreenLines]
-			mov esi, k_main_msg
-			mov ecx, k_main_msg_size
+			mov rsi, k_main_msg
+			mov rcx, k_main_msg_size
 
 		.nextChar:
 			; Loop through buffer
@@ -352,7 +352,7 @@ scroll_screen_check:
 	call sys_clear_screen
 	pop rcx
 	mov [ScreenLines], -1
-	xor ebx, ebx
+	xor rbx, rbx
 	
 	.ret_scroll:
 		ret
@@ -433,6 +433,7 @@ sys_cpu_speed:
 	test rdx, 0x10
 	jz done_sys_cpu_speed
 	mov rbx, [k_pit_clocks]
+	mov [k_speed_test], 1
 
 sys_cpu_speed_wait1:
 	cmp rbx, [k_pit_clocks]
@@ -466,7 +467,8 @@ sys_cpu_speed_wait2:
 
 done_sys_cpu_speed:
 	call sys_lb
-	pop   rdx rcx rbx rax
+	pop rdx rcx rbx rax
+	mov [k_speed_test], 0
 	ret
 	
 ; =============================

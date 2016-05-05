@@ -58,14 +58,20 @@ irq_0_handler_clock:
 	pop rax ; Restore state
 	mov r10, 0x0
 
-	; If the process queue is empty then just return
-	cli
-	call sys_check_queue_empty
-	test rbx, rbx
-	jne start_reschedule
-	mov r10, 0xF
-	sti
+	; If we are doing a speed test just exit
+	cmp [k_speed_test], 0
+	je start_queue_check
 	iretq
+
+	start_queue_check:
+		; If the process queue is empty then just return
+		cli
+		call sys_check_queue_empty
+		test rbx, rbx
+		jne start_reschedule
+		mov r10, 0xF
+		sti
+		iretq
 
 	; Find the next task to load in the queue
 	start_reschedule:
@@ -105,7 +111,7 @@ irq_0_handler_clock:
 		iretq
 
 irq_1_handler_keyboard:
-	cli
+	; cli
 	push rax
 	call start_kb
 	in al, 61h
@@ -114,7 +120,7 @@ irq_1_handler_keyboard:
 	out 20h, al
 	out 0A0h, al
 	pop rax
-	sti
+	; sti
 	iretq
 	
 irq_8_rtc:

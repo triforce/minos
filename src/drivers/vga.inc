@@ -5,12 +5,12 @@
 ; VGA Settings
 ; =========================================================
 
-ScreenYPos	        dd 0
-ScreenWidth		dd 0
-ScreenLines		dd 0 ; Memory total requires two lines currently
-ScreenBuf1 	        dd 0
-ScreenBuf2 	        dd 0
-CursorPosition		dd 0
+ScreenYPos	        dq 0
+ScreenWidth			dq 0
+ScreenLines			dq 0 ; Memory total requires two lines currently
+ScreenBuf1 	        dq 0
+ScreenBuf2 	        dq 0
+CursorPosition		dq 0
 
 ; 80 x 25
 MinX			equ 80

@@ -80,6 +80,7 @@ k_pit_clocks		dq 0 ; PIT cycles
 k_countdown			dq 0
 k_loTSC				dq 0
 k_hiTSC				dq 0
+k_speed_test		db 0
 
 ; PCI
 k_pci_msg				db 'PCI devices:', 0

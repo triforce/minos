@@ -418,8 +418,8 @@ main_entry:
 	mov ax, 0
 	rep stosb
 
-	cli
 	; Setup idle kernel task using the current stack
+	cli
 	mov al, 1
 	call sys_start_task
 	mov al, 2

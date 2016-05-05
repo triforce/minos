@@ -242,7 +242,6 @@ reschedule:
 		jmp exit_sched
 	exit_01:
 		mov r14, 0xDEAD1 ; Failed to load task
-		mov cl, [k_id_count]
 		mov r15, qword[k_process_queue]
 		jmp $
 	exit_02:
