@@ -292,7 +292,7 @@ sys_character_print:
 			; Set screen colours
 			; ax holds screen colors and char to write
 
-			mov ah, 256_white_black
+			mov ah, 16_white_black
 			cmp al, 10
 
 			je .handleCR
@@ -379,7 +379,7 @@ sys_clear_screen:
 
 	start_clear:
 	add rbx, 2
-	mov ah, 256_white_black
+	mov ah, 16_white_black
 	mov [0B8000h + rbx], rax
 	cmp rbx, rcx
 	jne start_clear

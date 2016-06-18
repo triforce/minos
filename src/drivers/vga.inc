@@ -6,8 +6,8 @@
 ; =========================================================
 
 ScreenYPos	        dq 0
-ScreenWidth			dq 0
-ScreenLines			dq 0 ; Memory total requires two lines currently
+ScreenWidth		dq 0
+ScreenLines		dq 0 ; Memory total requires two lines currently
 ScreenBuf1 	        dq 0
 ScreenBuf2 	        dq 0
 CursorPosition		dq 0
