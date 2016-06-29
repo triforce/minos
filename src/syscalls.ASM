@@ -271,7 +271,6 @@ sys_lb:
 ; ===================================
 
 sys_character_print:
-    ; Global text printer
 	pushaq
         mov ax, 0x0F0E
         mov dx, 0x03D4
@@ -288,10 +287,6 @@ sys_character_print:
        .character_printLoop:
 			; Print each character
 			lodsb
-			; Set blue background and white foreground
-			; Set screen colours
-			; ax holds screen colors and char to write
-
 			mov ah, 16_white_black
 			cmp al, 10
 
@@ -300,11 +295,18 @@ sys_character_print:
 			je .handleCR
 
 			mov [es:(rbx*2+0xB8000)], ax
-			inc bx
+			inc rbx
 			jmp .nextChar
 
 		.handleCR:
-			; Currently this only supports 80x25 mode
+			call scroll_screen_check
+			cmp rcx, 0
+			je .calculate_position
+
+			call calculate_end
+			jmp .reg_text
+
+		.calculate_position:
 			mov [ScreenWidth], MinX
 			mov rbx, MinX
 			mov rax, [ScreenLines]
@@ -315,9 +317,8 @@ sys_character_print:
 			add rbx, [ScreenWidth]
 			add rbx, [ScreenYPos]
 
-			call scroll_screen_check
-
 			inc [ScreenLines]
+		.reg_text:
 			mov rsi, k_main_msg
 			mov rcx, k_main_msg_size
 
@@ -342,20 +343,47 @@ sys_character_print:
 			popaq
 			ret
 
+calculate_end:
+	push rax rcx
+	mov rax, 0x50
+	mov rcx, 0x18
+	mul rcx
+	mov rbx, rax
+	pop rcx rax
+	ret
+
 scroll_screen_check:
+	mov rcx, 0
 	cmp [ScreenLines], MinY - 1
 	jne .ret_scroll
-	; Clear the entire screen and start from the top
-	push rcx
-	xor rcx, rcx
-	mov rcx, 0
-	call sys_clear_screen
-	pop rcx
-	mov [ScreenLines], -1
-	xor rbx, rbx
+	call sys_scroll_screen
+	mov rcx, 1
 	
 	.ret_scroll:
 		ret
+
+
+; =====================
+; sys_scroll_screen
+; -----------------
+; Scrolls the screen up
+; IN /OUT - None
+; =====================
+
+sys_scroll_screen:
+	pushaq
+	mov rdi, 0xB8000
+	mov rsi, 0xB80A0
+	mov rcx, 3840
+
+	scroll_screen:
+		movsb
+		inc rdi
+		inc rsi
+		loop scroll_screen
+
+	popaq
+	ret
 
 ; ===============================
 ; sys_clear_screen
@@ -372,7 +400,7 @@ sys_clear_screen:
 
 	mov rax, TotL
 	mul rcx
-	add rbx, rax
+	mov rbx, rax
 	xor rax, rax
 	xor rcx, rcx
 	mov rcx, TotS

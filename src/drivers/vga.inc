@@ -16,7 +16,7 @@ CursorPosition		dq 0
 MinX			equ 80
 MinY			equ 25
 TotL 			equ 160
-TotS 			equ 400
+TotS 			equ 4000
 
 ; VGA Settings
 ; AX
