@@ -1,3 +1,3 @@
 format binary
 file '../mboot.BIN'
-file '../k_main.BIN'
+file '../kernel_64.BIN'

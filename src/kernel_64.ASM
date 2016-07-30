@@ -87,9 +87,9 @@ TMP_R0_NULL_SELECTOR	= 0
 TMP_R0_DATA_SELECTOR	= 1 shl 3
 TMP_R0_CODE_SELECTOR	= 2 shl 3
 
-include '../inc/e820.inc'
-include '../inc/functions_16.inc'
-include '../drivers/vesa.inc'
+include 'inc/e820.inc'
+include 'inc/functions_16.inc'
+include 'drivers/vesa.inc'
 
 ;===============
 ; 32-bit kernel
@@ -233,7 +233,7 @@ start_long:
 
 use64
 
-include '../inc/sys_64.inc'
+include 'inc/sys_64.inc'
 
 main_64:
 
@@ -437,21 +437,21 @@ main_entry:
 	hlt
 
 ; Core functions
-include '../inc/macros_64.inc'
-include '../inc/interrupts_64.inc'
-include '../inc/sched.inc'
-include '../inc/key_handler.inc'
-include '../inc/commandlist.inc'
+include 'inc/macros_64.inc'
+include 'inc/interrupts_64.inc'
+include 'inc/sched.inc'
+include 'inc/cli.inc'
+include 'inc/commandlist.inc'
 ; Drivers
-include '../drivers/vga.inc'
-include '../drivers/pci.inc'
-include '../drivers/i8254x.inc'
-include '../drivers/rtl8169.inc'
-include '../drivers/key_converter.inc'
+include 'drivers/vga.inc'
+include 'drivers/pci.inc'
+include 'drivers/i8254x.inc'
+include 'drivers/rtl8169.inc'
+include 'drivers/key_converter.inc'
 ; System calls and associated routines
-include '../syscalls.ASM'
+include 'syscalls.ASM'
 ; Programs
-include '../apps/userland.inc'
-include '../apps/system.inc'
+include 'apps/userland.inc'
+include 'apps/system.inc'
 
 times   2000h - ($-$$)   db 0 ; Pad out to 8192 bytes long (so we know exactly how large the kernel is)

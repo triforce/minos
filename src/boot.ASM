@@ -120,7 +120,7 @@ dw 0aa55h
 ; Table of contents
 directories:
 	db 01h		; First entry
-	db "k_main"	; Filename of first data
+	db "kernel_64"	; Filename of first data
 	db "BIN"	; Extension of file
 	dw 2000h	; Size of file
 	
@@ -132,5 +132,5 @@ directories:
 
 ; Files on disk
 disk_data:
-	file 'k_main.BIN'
+	file 'kernel_64.BIN'
 	file 'config'

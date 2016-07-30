@@ -7,7 +7,12 @@ Legacy boots from a pre-built disk image with planned support for GRUB multiboot
 
 Kernel size: 8 KiB
 
-System Requirements:
+Current OS Features
+* Single threaded processes
+* CLI
+* Preemptive scheduler
+
+Minimum Hardware Requirements:
 
 * RAM: 3 MiB
 * CPU: x86-64
