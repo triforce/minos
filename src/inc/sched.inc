@@ -16,7 +16,7 @@ reschedule:
 	xor r15, r15
 
 	; xor rax, rax
-	mov [k_queue_empty], 0
+	mov byte [k_queue_empty], 0
 	
 	; If there is no task currently running then just start the first one in the queue
 	cmp [k_current_process.r_pid], 0
@@ -112,127 +112,96 @@ reschedule:
 
 	start_first_task:
 		mov al, byte[k_process_queue+0]
-		mov [k_queue_empty], 1
+		mov byte [k_queue_empty], 1
 		jmp found_next_task
 
 	mov r14, 0xDEAD4 ; Should never get here...
 
-	; Handle swapping the tasks
-	load_task:
-		mov byte[0x000B8094], al
-		mov bl, al
-		xor rax, rax
-		
-		mov rax, k_task_1
-		cmp byte[k_task_1.r_pid], bl
-		je check_first_task
-		mov rax, k_task_2
-		cmp byte[k_task_2.r_pid], bl
-		je check_first_task
-		mov rax, k_task_3
-		cmp byte[k_task_3.r_pid], bl
-		je check_first_task
-		mov rax, k_task_4
-		cmp byte[k_task_4.r_pid], bl
-		je check_first_task
-		mov rax, k_task_5
-		cmp byte[k_task_5.r_pid], bl
-		je check_first_task
-		mov rax, k_task_6
-		cmp byte[k_task_6.r_pid], bl
-		je check_first_task
-		mov rax, k_task_7
-		cmp byte[k_task_7.r_pid], bl
-		je check_first_task
-		mov rax, k_task_8
-		cmp byte[k_task_8.r_pid], bl
-		je check_first_task
-		mov rax, k_task_9
-		cmp byte[k_task_9.r_pid], bl
-		je check_first_task
-		mov rax, k_task_10
-		cmp byte[k_task_10.r_pid], bl
-		je check_first_task
-		jmp exit_01 ; No valid task
+        ; Handle swapping the tasks
+        load_task:
+                mov byte[0x000B8094], al
+                mov bl, al
+                xor rax, rax
 
-	check_first_task:
-		cmp [k_queue_empty], 1
-		je load_current
+                ; loop through last_free_address and compare pointer+24 to bl
+                ; if found load task using pointer
 
-		mov rbx, rax
-		xor rax, rax
-		mov rax, [k_current_process.r_rsp]
-		mov [k_previous_process.r_rsp], rax
-		mov rax, [k_current_process.r_rip]
-		mov [k_previous_process.r_rip], rax
-		mov rax, [k_current_process.r_pid]
-		mov [k_previous_process.r_pid], rax
-		mov rax, rbx
+                push rcx rdx
+                ; rcx is the pointer, starts at top of memory section for tasks
+                mov rcx, sys_kernel_extra
+                loopstart:
+                        cmp byte[rcx + 24], bl
+                        je check_task_start
+                        add rcx, 36
+                        cmp rcx, sys_kernel_extra_top
+                        jge exit_01
+                        jmp loopstart
 
-	load_current:
-		mov rdx, [rax + 0]
-		mov [k_current_process.r_rip], rdx
-		mov rdx, [rax + 8]
-		mov [k_current_process.r_rsp], rdx
-		mov rdx, [rax + 16]
-		mov [k_current_process.r_rbp], rdx
-		mov rdx, [rax + 24]
-		mov [k_current_process.r_pid], rdx
+                check_task_start:
+                        mov rax, [rcx]
+                        pop rdx rcx
 
-		cmp [k_queue_empty], 1
-		je exit_sched
+        check_first_task:
+                cmp byte [k_queue_empty], 1
+                je load_current
 
-		mov [k_previous_process.r_rsp], r9
-		mov [k_previous_process.r_rip], r8
+                mov rbx, rax
+                xor rax, rax
+                mov rax, [k_current_process.r_rsp]
+                mov [k_previous_process.r_rsp], rax
+                mov rax, [k_current_process.r_rip]
+                mov [k_previous_process.r_rip], rax
+                mov rax, [k_current_process.r_pid]
+                mov [k_previous_process.r_pid], rax
+                mov rax, rbx
 
-	load_previous:
-		; Now move update the previous process from the task list
-		xor rax, rax
-		mov al, byte[k_previous_process.r_pid]
-		mov bl, al
+        load_current:
+                mov rdx, [rax + 0]
+                mov [k_current_process.r_rip], rdx
+                mov rdx, [rax + 8]
+                mov [k_current_process.r_rsp], rdx
+                mov rdx, [rax + 16]
+                mov [k_current_process.r_rbp], rdx
+                mov rdx, [rax + 24]
+                mov [k_current_process.r_pid], rdx
 
-		mov rax, k_task_1
-		cmp byte[k_task_1.r_pid], bl
-		je update_previous_task
-		mov rax, k_task_2
-		cmp byte[k_task_2.r_pid], bl
-		je update_previous_task
-		mov rax, k_task_3
-		cmp byte[k_task_3.r_pid], bl
-		je update_previous_task
-		mov rax, k_task_4
-		cmp byte[k_task_4.r_pid], bl
-		je update_previous_task
-		mov rax, k_task_5
-		cmp byte[k_task_5.r_pid], bl
-		je update_previous_task
-		mov rax, k_task_6
-		cmp byte[k_task_6.r_pid], bl
-		je update_previous_task
-		mov rax, k_task_7
-		cmp byte[k_task_7.r_pid], bl
-		je update_previous_task
-		mov rax, k_task_8
-		cmp byte[k_task_8.r_pid], bl
-		je update_previous_task
-		mov rax, k_task_9
-		cmp byte[k_task_9.r_pid], bl
-		je update_previous_task
-		mov rax, k_task_10
-		cmp byte[k_task_10.r_pid], bl
-		je update_previous_task
+                cmp byte [k_queue_empty], 1
+                je exit_sched
 
-		jmp exit_sched ; No previous task
+                mov [k_previous_process.r_rsp], r9
+                mov [k_previous_process.r_rip], r8
 
-		update_previous_task:
-			mov rdx, [k_previous_process.r_rip]
-			mov [rax + 0], rdx
-			mov rdx, [k_previous_process.r_rsp]
-			mov [rax + 8], rdx
-			mov rdx, [k_previous_process.r_rbp]
-			mov [rax + 16], rdx
-			mov rdx, [k_previous_process.r_pid]
-			mov [rax + 24], rdx
+        load_previous:
+                ; Now move update the previous process from the task list
+                xor rax, rax
+                mov al, byte[k_previous_process.r_pid]
+                mov bl, al
+
+
+                push rcx rdx
+                ; rcx is the pointer, starts at top of memory section for tasks
+                mov rcx, sys_kernel_extra
+                previousloopstart:
+                        cmp byte[rcx + 24], bl
+                        je check_previous_start
+                        add rcx, 36
+                        cmp rcx, sys_kernel_extra_top
+                        jge exit_sched ; no previous task
+                        jmp previousloopstart
+
+                check_previous_start:
+                        mov rax, [rcx]
+                        pop rdx rcx
+
+                update_previous_task:
+                        mov rdx, [k_previous_process.r_rip]
+                        mov [rax + 0], rdx
+                        mov rdx, [k_previous_process.r_rsp]
+                        mov [rax + 8], rdx
+                        mov rdx, [k_previous_process.r_rbp]
+                        mov [rax + 16], rdx
+                        mov rdx, [k_previous_process.r_pid]
+                        mov [rax + 24], rdx
 
 		jmp exit_sched
 

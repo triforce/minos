@@ -81,8 +81,8 @@ drv_pci_scan:
 	xor rcx, rcx
 	xor rax, rax
 	mov ecx, 0x80000000
-	mov [k_pci_devices], 0
-	mov [k_pci_device], 0
+	mov dword [k_pci_devices], 0
+	mov dword [k_pci_device], 0
 
 	drv_pci_scan_next:
 		mov eax, ecx
@@ -95,13 +95,13 @@ drv_pci_scan:
 		je drv_pci_scan_not_present
 		
 		; Keep a count of devices
-		inc [k_pci_devices]
+		inc dword [k_pci_devices]
 
 		mov [k_pci_device], eax
 		push rcx
 		
 		; Check whether to configure drivers
-		cmp [k_var_1], 0
+		cmp byte [k_var_1], 0
 		je drve_found_continue
 
 		; Check for supported network driver

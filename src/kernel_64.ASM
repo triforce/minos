@@ -167,17 +167,17 @@ start_long:
 		loop make_page_entries
 
 	; Check there is memory available for user applications
-	cmp word [user_mem], 2048
+	cmp word [k_user_mem], 2048
 	jl continue_pdp
 
 	; ===============================================
-	; Create user table (1MiB for applications)
+	; Map the remaining 18 MiB
 	; Address of second page table
-	mov [user_mode_enabled], 1
+	mov byte [k_user_mode_enabled], 1
 	mov edi, 74000h
 	mov eax, 200000h + 111b
 	
-	mov ecx, 256
+	mov ecx, 7680
 
 	make_user_page_entries:
 		stosd
@@ -356,7 +356,7 @@ make_ring_3_call_gate:
 	mov word [89h*16], irq_9_pci_device
 	mov word [90h*16], system_call
 
-	mov [k_pit_clocks], 0
+	mov qword [k_pit_clocks], 0
 	
 	; Set PIT to around 100hz
 	mov dx, 2e9bh
@@ -386,12 +386,31 @@ init_pci_devices:
 
 ; Finish setting up memory
 finalise_memory:
-	mov esp, k_stack_end
-	; Move system/kernel variables and data to final location
-	mov esi, SysVars
-	mov edi, 0x00003200
-	mov ecx, SysVars_size
-	rep movsb
+	mov rsp, sys_stack
+	mov rbp, rsp
+init_memory_map:                        ; Build the OS memory table
+        push rax
+        push rcx
+        push rdi
+
+        ; Build a fresh memory map for the system
+        mov rdi, sys_mm
+        push rdi
+        xor rcx, rcx
+        mov ecx, [k_total_mem]
+        shr rcx, 10                     ; Convert to KiB
+        shr rcx, 2                      ; Divide by 4 to get number of 4KiB pages
+        mov al, 1
+        rep stosb
+        pop rdi
+        mov rcx, 512
+        mov al, 2
+        stosb                           ; Mark the first 2 MiB as in use (by Kernel and system buffers)
+
+        pop rdi
+        pop rcx
+        pop rax
+	mov [k_task_free_addr], sys_kernel_extra
 
 main_entry:
 	; Clear the screen starting from line 2
@@ -401,7 +420,6 @@ main_entry:
 
 	; Add config found message
 	mov esi, k_config1_msg
-	mov ecx, k_config1_msg_size
 	call sys_character_print
 	
 	; Add config file contents

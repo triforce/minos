@@ -59,7 +59,7 @@ irq_0_handler_clock:
 	mov r10, 0x0
 
 	; If we are doing a speed test just exit
-	cmp [k_speed_test], 0
+	cmp byte [k_speed_test], 0
 	je start_queue_check
 	iretq
 

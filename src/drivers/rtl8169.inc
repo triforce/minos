@@ -20,7 +20,7 @@ RTL8169_CFG1_REG        equ 0x52 ; Configuration Register 1
 drv_net_rtl8169_init:
 	push rax rcx rdx
 	; Check device present
-	cmp [k_pci_net_device], 0
+	cmp dword [k_pci_net_device], 0
 	je drv_net_rtl8169_init_done
 	xor eax, eax
 	

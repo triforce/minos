@@ -36,7 +36,7 @@ check_table:
 	mov [k_c_char], dl
 	
 	; Check if return key was pressed
-	cmp [k_c_char], 0dh
+	cmp byte [k_c_char], 0dh
 	jne output_char
 	
 	handle_command:
@@ -142,7 +142,7 @@ add_to_command_buffer:
 
 	.found_free_buffer:
 		mov [k_command_buffer+rbx], dl
-		add [k_command_buffer_s], 1
+		add dword [k_command_buffer_s], 1
 		jmp .done_check
 
 	.kb_buffer_full:

@@ -15,7 +15,7 @@
 drv_net_i8254_init:
         push rax rcx rdx
         ; Check device present
-        cmp [k_pci_net_device], 0
+        cmp dword [k_pci_net_device], 0
 	je drv_net_i8254_init_done
         xor eax, eax
 

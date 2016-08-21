@@ -92,7 +92,7 @@ sys_get_string_size_done:
 
 sys_hex_print:
 	push rax rbx rcx
-	mov rbx, hex_list
+	mov rbx, k_hex_list
 
 	push rax
 	shr al, 4
@@ -138,10 +138,10 @@ sys_dec_convert:
 		pop rdx
 		add dl, '0'
 		push rbx
-		mov rbx, [number_count]
-		mov byte [number_buf+rbx], dl
+		mov rbx, [k_number_count]
+		mov byte [k_number_buf+rbx], dl
 		inc rbx
-		mov [number_count], rbx
+		mov [k_number_count], rbx
 		pop rbx
 		loop .sys_dec_print_do_digit
 
@@ -256,7 +256,6 @@ sys_lb:
 	out dx, ax
 
 	mov rsi, k_main_msg
-	mov rcx, k_main_msg_size
 	call sys_character_print
 	pop rdx rcx rbx rax
 	ret
@@ -320,7 +319,6 @@ sys_character_print:
 			inc [ScreenLines]
 		.reg_text:
 			mov rsi, k_main_msg
-			mov rcx, k_main_msg_size
 
 		.nextChar:
 			; Loop through buffer
@@ -338,8 +336,8 @@ sys_character_print:
 			out dx, ax
 
 		.doneChar:
-			mov [number_buf], 0
-			mov [number_count], 0
+			mov qword [k_number_buf], 0
+			mov qword [k_number_count], 0
 			popaq
 			ret
 
@@ -428,7 +426,6 @@ sys_pci_list:
 	mov dl, al
 	xor ecx, ecx
 	mov esi, k_pci_msg
-	mov ecx, k_pci_msg_size
 	call sys_character_print
 	mov al, dl
 	call drv_pci_scan
@@ -448,7 +445,6 @@ sys_cpu_speed:
 
 	xor ecx, ecx
 	mov esi, k_speed_msg
-	mov ecx, k_speed_msg_size
 	call sys_character_print
 	
     xor rax, rax
@@ -461,7 +457,7 @@ sys_cpu_speed:
 	test rdx, 0x10
 	jz done_sys_cpu_speed
 	mov rbx, [k_pit_clocks]
-	mov [k_speed_test], 1
+	mov byte [k_speed_test], 1
 
 sys_cpu_speed_wait1:
 	cmp rbx, [k_pit_clocks]
@@ -486,17 +482,17 @@ sys_cpu_speed_wait2:
 	mov rax, [k_speed]
 	call sys_dec_convert
 
-	mov esi, number_buf
-	mov ecx, dword [number_count]
+	mov esi, k_number_buf
+	mov ecx, dword [k_number_count]
 	call sys_character_print
 
-	mov [number_count], 0
-	mov [number_buf], 0
+	mov qword [k_number_count], 0
+	mov qword [k_number_buf], 0
 
 done_sys_cpu_speed:
 	call sys_lb
 	pop rdx rcx rbx rax
-	mov [k_speed_test], 0
+	mov byte [k_speed_test], 0
 	ret
 	
 ; =============================
@@ -522,78 +518,71 @@ sys_wait:
 ; +++++++++++++++++++
 ; Memory System Calls
 ; +++++++++++++++++++
-
-; =======================================
+; =========================================
 ; sys_allom
 ; ---------
 ; Allocate memory
-; IN  - rcx = Number of bytes to allocate
-; OUT - rax = Starting address
-; =======================================
-
+; IN  - rcx = Number of pages to allocate
+; OUT - rax = Starting address / 0 for fail
+; =========================================
 sys_allom:
-	push rsi rdx rbx
+        push rsi rdx rbx
 
-	; Must be at least one byte
-	cmp rcx, 0
-	je sys_allom_fail
+        cmp rcx, 0
+        je sys_allom_fail
 
-	mov [mem_size], cl
+        xor rax, rax
+        mov rsi, sys_mm
+        mov eax, [k_total_mem] ; This is in bytes
+        shr eax, 10 ; Convert to KiB
+        mov rdx, rsi
+        shr rax, 2 ; Divide by 4096
 
-	xor rax, rax
-	mov rsi, sys_free_mem
-	mov rax, sys_max_user_mem
-	mov rdx, rsi
-	
-	sub rsi, 1
-	std ; Set direction flag
-	add rsi, rax
+        ; Start looking from end of memory map
+        sub rsi, 1
+        std ; Set direction flag
+        add rsi, rax
 
-	sys_allom_start:
-		mov rbx, rcx
+        sys_allom_start:
+                mov rbx, rcx
 
-	sys_allom_check:
-		lodsb ; load byte from si into al
-		
-		; As we are counting downwards check if we are at the start of the user memory section (sys_free_mem)
-		cmp rsi, rdx
-		je sys_allom_fail
+        sys_allom_nextpage:
+                lodsb
+                cmp rsi, rdx ; Check if we are at start of map
+                je sys_allom_fail
 
-		; Free = 1
-		cmp al, 1
-		jne sys_allom_start
+                cmp al, 1
+                jne sys_allom_start
 
-		dec rbx
-		jnz sys_allom_check
+                dec rbx
+                jnz sys_allom_nextpage
 
-	sys_allom_doalloc:
-		cld ; Clear direction flag
+        sys_allomalloc:
+                cld
+                ; Swap rsi rdi
+                xor rdi, rsi
+                xor rsi, rdi
+                xor rdi, rsi
 
-		xor rdi, rsi
-		xor rsi, rdi
-		xor rdi, rsi
-	
-		push rcx
-		add rdi, 1
-		mov al, 2
-		mov rbx, rdi
-		rep stosb
-		mov rdi, rsi
-		sub rbx, rdx
-		pop rcx
+                push rcx
+                add rdi, 1
+                mov al, 2
+                mov rbx, rdi ; rbx = start of page
+                rep stosb
+                mov rdi, rsi
+                sub rbx, rdx
+                pop rcx
 
-		shl rbx, 1
-		add rbx, rax ; Add total available memory back to calculate address
-		mov rax, rbx
-		jmp sys_allom_done
+                shl rbx, 12                     ; x 4096
+                mov rax, rbx
+                jmp sys_allom_done
 
-	sys_allom_fail:
-		; Restore direction flag if failed
-		cld
-		xor rax, rax
+        sys_allom_fail:
+                cld
+                xor rax, rax
 
-	sys_allom_done:
-		pop rbx rdx rsi
+        sys_allom_done:
+                pop rbx rdx rsi
 		ret
 
 ; ====================================
@@ -606,18 +595,17 @@ sys_allom:
 
 sys_show_mem:
 	push rax rcx rbx
-	mov [mem_size], cl
+	mov byte [k_mem_size], cl
 
 	mov esi, k_memory_msg
-	mov ecx, k_memory_msg_size
 	call sys_character_print
 	
-	mov eax, [total_mem]
-	cmp [mem_size], 1
+	mov eax, [k_total_mem]
+	cmp byte [k_mem_size], 1
 	je set_b
-	cmp [mem_size], 2
+	cmp byte [k_mem_size], 2
 	je set_kb
-	cmp [mem_size], 3
+	cmp byte [k_mem_size], 3
 	je set_mb
 	
 	set_b:
@@ -632,12 +620,12 @@ sys_show_mem:
 	sys_show_mem_display:
 		call sys_dec_convert
 	
-		mov esi, number_buf
-		mov ecx, dword [number_count]
+		mov esi, k_number_buf
+		mov ecx, dword [k_number_count]
 		call sys_character_print
 	
-		mov [number_count], 0
-		mov [number_buf], 0
+		mov qword [k_number_count], 0
+		mov qword [k_number_buf], 0
 		call sys_lb
 		pop rax rcx rbx
 		ret
@@ -650,120 +638,59 @@ sys_show_mem:
 ; IN  - al = 1 task number
 ; OUT - None
 ; ========================
-
 sys_start_task:
-	pushaq
-	cli
-	mov ah, al
-	xor rbx, rbx
-	xor rcx, rcx
-	find_free_slot:
-		mov al, byte[k_process_queue+rbx]
-		; Check if its zero
-		cmp al, 0
-		je create_task
-		inc rbx
-		cmp rbx, MAX_PROCESSES - 1
-		je sys_start_task_done
-		jmp find_free_slot
+        pushaq
+        cli
+        cmp rax, 0
+        je no_task_slot
+        mov rdx, rax ; Save address
+        xor rbx, rbx
+        xor rcx, rcx
+        find_free_slot:
+                mov al, byte[k_process_queue+rbx]
+                ; Check if its zero
+                cmp al, 0
+                je create_task
+                inc rbx
+                cmp rbx, MAX_PROCESSES - 1
+                je sys_start_task_done
+                jmp find_free_slot
 
-		create_task:
-			; Create task at index rbx
-			mov cl, [k_id_count]
-			inc cl
-			mov [k_id_count], cl
-			mov byte[k_process_queue+rbx], cl
+        create_task:
+                ; Create task at index rbx
+                mov cl, [k_id_count]
+                inc cl
+                mov [k_id_count], cl
+                mov byte[k_process_queue+rbx], cl
 
-			; Debug
-			; mov r15, qword[k_process_queue]
-			; jmp $
+                ; Debug
+                ; mov r15, qword[k_process_queue]
+                ; jmp $
+                        
+                ; Allocate 1 page for the stack
 
-			; Now configure task slot
-			mov bl, ah
-			xor rax, rax
-			mov rax, rsp ; Just use current kernel stack
-			cmp bl, 1
-			je start_task_1
-			cmp bl, 2
-			je start_task_2
-			cmp bl, 3
-			je start_task_3
-			cmp bl, 4
-			je start_task_4
-			cmp bl, 5
-			je start_task_5
-			cmp bl, 6
-			je start_task_6
-			cmp bl, 7
-			je start_task_7
-			cmp bl, 8
-			je start_task_8
-			cmp bl, 9
-			je start_task_9
-			jmp no_task_slot
+                ; Now configure task slot
+                xor rax, rax
+                mov rax, rsp ; Just use current kernel stack
+                
+        start_task:
+                mov rbx, [k_task_free_addr]
+                mov [rbx+0], rdx
+                mov [rbx+8], rax
+                mov [rbx+16], rbp
+                mov [rbx+24], rcx
+                mov rax, [k_task_free_addr+32]
+                
+                mov [k_task_free_addr], rax                            
+                jmp sys_start_task_done
 
-			start_task_1:
-				mov [k_task_1.r_rip], sys_task_1
-				mov [k_task_1.r_rsp], rax
-				mov [k_task_1.r_rbp], rbp
-				mov [k_task_1.r_pid], rcx
-				jmp sys_start_task_done
-			start_task_2:
-				mov [k_task_2.r_rip], sys_task_2
-				mov [k_task_2.r_rsp], rax
-				mov [k_task_2.r_rbp], rbp
-				mov [k_task_2.r_pid], rcx
-				jmp sys_start_task_done
-			start_task_3:
-				mov [k_task_3.r_rip], sys_task_3
-				mov [k_task_3.r_rsp], rax
-				mov [k_task_3.r_rbp], rbp
-				mov [k_task_3.r_pid], rcx
-				jmp sys_start_task_done
-			start_task_4:
-				mov [k_task_4.r_rip], sys_task_4
-				mov [k_task_4.r_rsp], rax
-				mov [k_task_4.r_rbp], rbp
-				mov [k_task_4.r_pid], rcx
-				jmp sys_start_task_done
-			start_task_5:
-				mov [k_task_5.r_rip], sys_task_5
-				mov [k_task_5.r_rsp], rax
-				mov [k_task_5.r_rbp], rbp
-				mov [k_task_5.r_pid], rcx
-				jmp sys_start_task_done
-			start_task_6:
-				mov [k_task_6.r_rip], sys_task_6
-				mov [k_task_6.r_rsp], rax
-				mov [k_task_6.r_rbp], rbp
-				mov [k_task_6.r_pid], rcx
-				jmp sys_start_task_done
-			start_task_7:
-				mov [k_task_7.r_rip], sys_task_7
-				mov [k_task_7.r_rsp], rax
-				mov [k_task_7.r_rbp], rbp
-				mov [k_task_7.r_pid], rcx
-				jmp sys_start_task_done
-			start_task_8:
-				mov [k_task_8.r_rip], sys_task_8
-				mov [k_task_8.r_rsp], rax
-				mov [k_task_8.r_rbp], rbp
-				mov [k_task_8.r_pid], rcx
-				jmp sys_start_task_done
-			start_task_9:
-				mov [k_task_9.r_rip], sys_task_9
-				mov [k_task_9.r_rsp], rax
-				mov [k_task_9.r_rbp], rbp
-				mov [k_task_9.r_pid], rcx
-				jmp sys_start_task_done
+        no_task_slot:
+                mov r15, 0xDEAD1
+                jmp $
 
-	no_task_slot:
-		mov r15, 0xDEAD1
-		jmp $
-
-	sys_start_task_done:
-		sti
-		popaq
+        sys_start_task_done:
+                sti
+                popaq
 		ret
 
 ; ==============================

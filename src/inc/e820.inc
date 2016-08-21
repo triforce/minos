@@ -16,7 +16,7 @@ detect_memory:
 do_e820:
 	pusha
 
-	mov [total_mem], dword 0
+	mov [k_total_mem], dword 0
 
 	mov di, e820_buffer
 	xor ebx, ebx
@@ -38,8 +38,8 @@ do_e820:
 	cmp eax, 1
 	jg .not_os
 	mov eax, [di + 8]
-	add eax, [total_mem]
-	mov [total_mem], eax ; Save total mem
+	add eax, dword [k_total_mem]
+	mov dword [k_total_mem], eax ; Save total mem
 	jmp .print_values
 
 .not_os:
@@ -98,7 +98,7 @@ do_e820:
 	jmp .finish_e820
 
 .nsupported:
-	mov [mem_check], 0
+	mov byte [k_mem_check], 0
 	mov al, 'n'
 	mov ah, 0eh
 	int 10h
@@ -113,12 +113,12 @@ do_e88h:
 	mov ah, 88h
 	int 15h
 	jc .nsupported_88
-	mov [user_mem], ax
+	mov word [k_user_mem], ax
 	pop ax
 	ret
 
 	.nsupported_88:
-		mov [mem_check], 0
+		mov byte [k_mem_check], 0
 		mov al, 'n'
 		mov ah, 0eh
 		int 10h
