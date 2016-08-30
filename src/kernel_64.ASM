@@ -388,7 +388,7 @@ init_pci_devices:
 finalise_memory:
 	mov rsp, sys_stack
 	mov rbp, rsp
-init_memory_map:                        ; Build the OS memory table
+init_memory_map:
         push rax
         push rcx
         push rdi
@@ -398,19 +398,19 @@ init_memory_map:                        ; Build the OS memory table
         push rdi
         xor rcx, rcx
         mov ecx, [k_total_mem]
-        shr rcx, 10                     ; Convert to KiB
-        shr rcx, 2                      ; Divide by 4 to get number of 4KiB pages
+        shr rcx, 10 ; Convert to KiB
+        shr rcx, 2 ; Divide by 4 to get number of 4KiB pages
         mov al, 1
         rep stosb
         pop rdi
         mov rcx, 512
         mov al, 2
-        stosb                           ; Mark the first 2 MiB as in use (by Kernel and system buffers)
+        stosb ; Mark the first 2 MiB as in use
 
         pop rdi
         pop rcx
         pop rax
-	mov [k_task_free_addr], sys_kernel_extra
+	mov [k_task_free_addr], k_task_list
 
 main_entry:
 	; Clear the screen starting from line 2
@@ -420,6 +420,7 @@ main_entry:
 
 	; Add config found message
 	mov esi, k_config1_msg
+	mov ecx, k_config1_msg_size
 	call sys_character_print
 	
 	; Add config file contents
@@ -438,16 +439,16 @@ main_entry:
 
 	; Setup idle kernel task using the current stack
 	cli
-	mov al, 1
+	mov rax, sys_task_1
 	call sys_start_task
-	mov al, 2
+	mov rax, sys_task_2
 	call sys_start_task
 	sti
 
 	; Run a test user program
-	mov rax, u_prog_1
-	mov rcx, u_prog_1_size
-	call sys_load_program
+	;mov rax, u_prog_1
+	;mov rcx, u_prog_1_size
+	;call sys_load_program
 
 	idle:
 		jmp idle

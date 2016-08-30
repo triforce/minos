@@ -256,6 +256,7 @@ sys_lb:
 	out dx, ax
 
 	mov rsi, k_main_msg
+	mov rcx, k_main_msg_size
 	call sys_character_print
 	pop rdx rcx rbx rax
 	ret
@@ -319,6 +320,7 @@ sys_character_print:
 			inc [ScreenLines]
 		.reg_text:
 			mov rsi, k_main_msg
+			mov rcx, k_main_msg_size
 
 		.nextChar:
 			; Loop through buffer
@@ -426,6 +428,7 @@ sys_pci_list:
 	mov dl, al
 	xor ecx, ecx
 	mov esi, k_pci_msg
+	mov ecx, k_pci_msg_size
 	call sys_character_print
 	mov al, dl
 	call drv_pci_scan
@@ -445,6 +448,7 @@ sys_cpu_speed:
 
 	xor ecx, ecx
 	mov esi, k_speed_msg
+	mov ecx, k_speed_msg_size
 	call sys_character_print
 	
     xor rax, rax
@@ -598,6 +602,7 @@ sys_show_mem:
 	mov byte [k_mem_size], cl
 
 	mov esi, k_memory_msg
+	mov ecx, k_memory_msg_size
 	call sys_character_print
 	
 	mov eax, [k_total_mem]
@@ -635,7 +640,7 @@ sys_show_mem:
 ; sys_start_task
 ; --------------
 ; Start a system task
-; IN  - al = 1 task number
+; IN  - rax - pointer to task entry point
 ; OUT - None
 ; ========================
 sys_start_task:
@@ -644,6 +649,7 @@ sys_start_task:
         cmp rax, 0
         je no_task_slot
         mov rdx, rax ; Save address
+	xor rax, rax
         xor rbx, rbx
         xor rcx, rcx
         find_free_slot:
@@ -679,7 +685,8 @@ sys_start_task:
                 mov [rbx+8], rax
                 mov [rbx+16], rbp
                 mov [rbx+24], rcx
-                mov rax, [k_task_free_addr+32]
+		add rbx, 32
+                mov rax, rbx
                 
                 mov [k_task_free_addr], rax                            
                 jmp sys_start_task_done

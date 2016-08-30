@@ -119,33 +119,34 @@ reschedule:
 
         ; Handle swapping the tasks
         load_task:
-                mov byte[0x000B8094], al
-                mov bl, al
-                xor rax, rax
-
+		xor rbx, rbx
+		mov byte[0x000B8094], al
+		mov bl, al
+		xor rax, rax
                 ; loop through last_free_address and compare pointer+24 to bl
                 ; if found load task using pointer
 
                 push rcx rdx
                 ; rcx is the pointer, starts at top of memory section for tasks
-                mov rcx, sys_kernel_extra
+                mov rcx, k_task_list
+
                 loopstart:
-                        cmp byte[rcx + 24], bl
+                        cmp qword[rcx + 24], rbx
                         je check_task_start
-                        add rcx, 36
-                        cmp rcx, sys_kernel_extra_top
+                        add rcx, 32
+                        cmp rcx, k_task_list + MAX_TASK_DATA
                         jge exit_01
                         jmp loopstart
 
                 check_task_start:
-                        mov rax, [rcx]
+                        mov rax, rcx ; rcx = points to task
                         pop rdx rcx
 
         check_first_task:
                 cmp byte [k_queue_empty], 1
                 je load_current
 
-                mov rbx, rax
+                mov rbx, rax ; rbx = points to task to set as current
                 xor rax, rax
                 mov rax, [k_current_process.r_rsp]
                 mov [k_previous_process.r_rsp], rax
@@ -153,7 +154,7 @@ reschedule:
                 mov [k_previous_process.r_rip], rax
                 mov rax, [k_current_process.r_pid]
                 mov [k_previous_process.r_pid], rax
-                mov rax, rbx
+                mov rax, rbx ; rax = points to task
 
         load_current:
                 mov rdx, [rax + 0]
@@ -174,23 +175,23 @@ reschedule:
         load_previous:
                 ; Now move update the previous process from the task list
                 xor rax, rax
+		xor rbx, rbx
                 mov al, byte[k_previous_process.r_pid]
                 mov bl, al
 
-
                 push rcx rdx
                 ; rcx is the pointer, starts at top of memory section for tasks
-                mov rcx, sys_kernel_extra
+                mov rcx, k_task_list
                 previousloopstart:
-                        cmp byte[rcx + 24], bl
+                        cmp qword[rcx + 24], rbx
                         je check_previous_start
-                        add rcx, 36
-                        cmp rcx, sys_kernel_extra_top
+                        add rcx, 32
+                        cmp rcx, k_task_list + MAX_TASK_DATA
                         jge exit_sched ; no previous task
                         jmp previousloopstart
 
                 check_previous_start:
-                        mov rax, [rcx]
+                        mov rax, rcx
                         pop rdx rcx
 
                 update_previous_task:

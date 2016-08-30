@@ -96,12 +96,17 @@ MAX_TASK_DATA           = MAX_PROCESSES * 32
 ; ---------------------------------------------
 
 k_main_msg              db 'minOS64 > ', 0
+k_main_msg_size		= $ - k_main_msg
 k_hex_list              db '0123456789ABCDEF'
 k_dec_list              db '0123456789'
 k_speed_msg             db 'CPU Speed (Mhz):', 0
+k_speed_msg_size	= $ - k_speed_msg
 k_pci_msg               db 'PCI devices:', 0
+k_pci_msg_size		= $ - k_pci_msg
 k_memory_msg            db 'Free memory available (KiB):', 0
+k_memory_msg_size	= $ - k_memory_msg
 k_config1_msg           db 'Config found on disk: ', 0
+k_config1_msg_size	= $ - k_config1_msg
 
 ; ---------------------------------------------
 ; Uninitialised Reserved Data
@@ -116,7 +121,7 @@ k_user_mem              rw 1
 
 k_total_mem             rd 1
 
-k_task_list             rb MAX_TASK_DATA
+k_task_list:            rb MAX_TASK_DATA
 
 k_previous_process      k_task 0,0,0,0
 k_current_process       k_task 0,0,0,0
