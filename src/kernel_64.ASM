@@ -177,7 +177,7 @@ start_long:
 	mov edi, 74000h
 	mov eax, 200000h + 111b
 	
-	mov ecx, 7680
+	mov ecx, 4608
 
 	make_user_page_entries:
 		stosd
@@ -238,10 +238,10 @@ include 'inc/sys_64.inc'
 main_64:
 
 	; Save the config file into kernel data before memory gets remapped
-    mov esi, 0500h
-    mov edi, k_config_file
-    mov ecx, 8
-    rep movsb
+	mov esi, 0500h
+	mov edi, k_config_file
+	mov ecx, 8
+	rep movsb
 	
 	; Clear everything out
 	xor rax, rax

@@ -14,7 +14,7 @@ Current OS Features
 
 Minimum Hardware Requirements:
 
-* RAM: 3 MiB
+* RAM: 20 MiB
 * CPU: x86-64
 
 Microprocessors tested on:
@@ -42,4 +42,4 @@ Quickstart
 <code>make</code>
 
 <p><strong>Run minOS in the Bochs emulator:</strong></p>
-<code>bochs -f emulators/bochs_config</code>
+<code>bochs -f emulators/bochs-<ubuntu|arch></code>
