@@ -42,4 +42,4 @@ Quickstart
 <code>make</code>
 
 <p><strong>Run minOS in the Bochs emulator:</strong></p>
-<code>bochs -f emulators/bochs-<ubuntu|arch></code>
+<code>bochs -f emulators/bochs-\<ubuntu|arch\></code>
