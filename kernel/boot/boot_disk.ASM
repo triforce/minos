@@ -16,10 +16,10 @@ jmp start
 nop
 
 ; File System Info, legacy BIOS parameter block (bpb)
-OEM:					db "MIN OS"
+OEM:				db "MIN OS"
 bpbBytesPerSector:		dw 512
 bpbSectorsPerTrack:		dw 18
-bpbHeadsPerCylinder:	dw 2
+bpbHeadsPerCylinder:		dw 2
 bsDriveNumber:			db 0
 bsVolumeLabel:			db "minOS    "
 
@@ -120,7 +120,7 @@ dw 0aa55h
 ; Table of contents
 directories:
 	db 01h		; First entry
-	db "kernel_64"	; Filename of first data
+	db "kernel"	; Filename of first data
 	db "BIN"	; Extension of file
 	dw 2000h	; Size of file
 	
@@ -132,5 +132,5 @@ directories:
 
 ; Files on disk
 disk_data:
-	file 'kernel_64.BIN'
-	file 'config'
+	file '../../build/kernel.BIN'
+	file '../../conf/config'

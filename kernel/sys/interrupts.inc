@@ -146,7 +146,7 @@ system_call:
 	mov al, 20h
 	out 20h, al
 	pop rax
-	call sys_call
+	call sys_call_handler
 	sti
 	iretq
 

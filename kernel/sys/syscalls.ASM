@@ -6,21 +6,21 @@
 ; =========================================================
 
 ; ===========================
-; sys_call
-; --------
+; sys_call_handler
+; ----------------
 ; Standard system call
 ; IN  - rax = Call number
-;	  - rbx = Parameters/Data
+;     - rbx = Parameters/Data
 ; ===========================
 
-sys_call:
+sys_call_handler:
 	pushaq
 	cmp rax, 0
 	je call_task_exit
 	cmp rax, 1
 	je call_sys_character_print
 	; No matches - bye!
-	jmp sys_call_ret
+	jmp sys_call_handler_ret
 
 	call_task_exit:
 		xor rax, rax
@@ -51,19 +51,19 @@ sys_call:
 		mov rsi, rbx
 		mov rcx, rax
 		call sys_character_print
-		jmp sys_call_ret
+		jmp sys_call_handler_ret
 
-	sys_call_ret:
+	sys_call_handler_ret:
 		popaq
 		ret
 
-; ======================================
+; ========================================
 ; sys_get_string_size
 ; -------------
 ; Get size of null terminated char array
-; IN - rax = pointer to string byte array
+; IN  - rax = pointer to string byte array
 ; OUT - rax = size of string
-; ======================================
+; ========================================
 
 sys_get_string_size:
 	push rbx rcx
@@ -227,12 +227,12 @@ sys_command_print:
 	.sys_command_print_done:
 		ret
 
-; ============================
+; ===========================
 ; sys_lb
 ; ------
 ; Adds new line to the screen
 ; IN /OUT - None
-; ============================
+; ===========================
 sys_lb:
 	push rax rbx rcx rdx
 	mov [ScreenWidth], MinX
@@ -436,12 +436,12 @@ sys_pci_list:
 	popaq
 	ret
 
-; ================
+; ===============
 ; sys_cpu_speed
 ; -------------
 ; Test CPU speed
 ; IN / OUT - None
-; ================
+; ===============
 
 sys_cpu_speed:
 	push rax rbx rcx rdx
@@ -636,13 +636,13 @@ sys_show_mem:
 		ret
 
 
-; ========================
+; =======================================
 ; sys_start_task
 ; --------------
 ; Start a system task
 ; IN  - rax - pointer to task entry point
 ; OUT - None
-; ========================
+; =======================================
 sys_start_task:
         pushaq
         cli

@@ -24,6 +24,16 @@ Microprocessors tested on:
 
 I want to say a big thanks to the Flat Assembler community (http://flatassembler.net) for their help and advice - The boards are full of great examples and I hope they inspire more to take up assembly programming.
 
+Directory Structure
+-------------------
+kernel/
+apps - Userspace applications
+boot - Boot related
+dev  - Devices and drivers
+inc  - Misc
+mem  - Memory management
+sys  - Core system
+
 Quickstart
 ----------
 <p>Want to jump right in and run minOS? Follow these simple steps...</p>

@@ -1,2 +1,2 @@
 format binary as 'img'
-file 'boot.BIN'
+file 'boot_disk.BIN'
