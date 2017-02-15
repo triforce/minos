@@ -45,11 +45,8 @@ Quickstart
 <p><strong>Clone this repo:</strong></p>
 <code>git clone https://github.com/triforce/minos.git</code>
 
-<p><strong>Switch to the minos directory:</strong></p>
-<code>cd minos</code>
+<p><strong>Switch to the minos build directory and build the image:</strong></p>
+<code>cd minos/build && make</code>
 
-<p><strong>Make the img:</strong></p>
-<code>make</code>
-
-<p><strong>Run minOS in the Bochs emulator:</strong></p>
-<code>bochs -f emulators/bochs-\<ubuntu|arch\></code>
+<p><strong>Switch back to the root dir and run minOS in the Bochs emulator:</strong></p>
+<code>cd .. && bochs -f emulators/bochs-\<ubuntu|arch\></code>
