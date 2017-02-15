@@ -87,9 +87,9 @@ TMP_R0_NULL_SELECTOR	= 0
 TMP_R0_DATA_SELECTOR	= 1 shl 3
 TMP_R0_CODE_SELECTOR	= 2 shl 3
 
-include 'inc/e820.inc'
+include 'mem/e820.inc'
 include 'inc/functions_16.inc'
-include 'drivers/vesa.inc'
+include 'dev/vesa.inc'
 
 ;===============
 ; 32-bit kernel
@@ -233,7 +233,7 @@ start_long:
 
 use64
 
-include 'inc/sys_64.inc'
+include 'inc/data.inc'
 
 main_64:
 
@@ -456,19 +456,19 @@ main_entry:
 	hlt
 
 ; Core functions
-include 'inc/macros_64.inc'
-include 'inc/interrupts_64.inc'
-include 'inc/sched.inc'
-include 'inc/cli.inc'
-include 'inc/commandlist.inc'
+include 'inc/macros.inc'
+include 'sys/interrupts.inc'
+include 'sys/sched.inc'
+include 'cli/cli.inc'
+include 'cli/command_list.inc'
 ; Drivers
-include 'drivers/vga.inc'
-include 'drivers/pci.inc'
-include 'drivers/i8254x.inc'
-include 'drivers/rtl8169.inc'
-include 'drivers/key_converter.inc'
+include 'dev/vga.inc'
+include 'dev/pci.inc'
+include 'dev/i8254x.inc'
+include 'dev/rtl8169.inc'
+include 'dev/key_converter.inc'
 ; System calls and associated routines
-include 'syscalls.ASM'
+include 'sys/syscalls.ASM'
 ; Programs
 include 'apps/userland.inc'
 include 'apps/system.inc'
