@@ -26,13 +26,17 @@ I want to say a big thanks to the Flat Assembler community (http://flatassembler
 
 Directory Structure
 -------------------
-kernel/
-apps - Userspace applications
-boot - Boot related
-dev  - Devices and drivers
-inc  - Misc
-mem  - Memory management
-sys  - Core system
+kernel\/apps - Userspace applications
+
+kernel\/boot - Boot related
+
+kernel\/dev  - Devices and drivers
+
+kernel\/inc  - Misc
+
+kernel\/mem  - Memory management
+
+kernel\/sys  - Core system
 
 Quickstart
 ----------
