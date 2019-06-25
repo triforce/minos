@@ -43,14 +43,18 @@ Quickstart
 <p>Want to jump right in and run minOS? Follow these simple steps...</p>
 
 <p><strong>Install the required software on your GNU/Linux distribution:</strong></p>
+
 <p>Ubuntu/Debian: <code>apt-get install bochs fasm</code></p>
 <p>Arch: <code>pacman -S bochs</code> | (install fasm from the aur, for example using aurget: <code>aurget -S fasm</code>)</p>
 
 <p><strong>Clone this repo:</strong></p>
+
 <code>git clone https://github.com/triforce/minos.git</code>
 
 <p><strong>Switch to the minos build directory and build the image:</strong></p>
+
 <code>cd minos/build && make</code>
 
 <p><strong>Switch back to the root dir and run minOS in the Bochs emulator:</strong></p>
+
 <code>cd .. && bochs -f emulators/bochs-\<ubuntu|arch\></code>
