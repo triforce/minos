@@ -320,8 +320,8 @@ main_64:
 	; 4      IRQ 4 disabled
 	; 3      IRQ 3 disabled
 	; 2      IRQ 2 disabled
-	; 1      IRQ 1 disabled
-	; 0      IRQ 0 disabled
+	; 1      IRQ 1 enabled
+	; 0      IRQ 0 enabled
 	mov al, 11111100b
 	out 21h, al
 	in al, 0A1h
