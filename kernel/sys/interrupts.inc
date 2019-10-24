@@ -1,6 +1,6 @@
 ; =========================================================
 ; minos -- a hobby operating system written for x86-64
-; Copyright (C) 2010-2016
+; Copyright (C) 2010-2017
 ;
 ; Interrupt Handlers
 ; ==========================================================
@@ -146,7 +146,7 @@ system_call:
 	mov al, 20h
 	out 20h, al
 	pop rax
-	call sys_call
+	call sys_call_handler
 	sti
 	iretq
 

@@ -1,6 +1,6 @@
 ; =========================================================
 ; minos -- a hobby operating system written for x86-64
-; Copyright (C) 2010-2016
+; Copyright (C) 2010-2017
 ;
 ; Main kernel
 ; =========================================================
@@ -87,9 +87,9 @@ TMP_R0_NULL_SELECTOR	= 0
 TMP_R0_DATA_SELECTOR	= 1 shl 3
 TMP_R0_CODE_SELECTOR	= 2 shl 3
 
-include 'inc/e820.inc'
+include 'mem/e820.inc'
 include 'inc/functions_16.inc'
-include 'drivers/vesa.inc'
+include 'dev/vesa.inc'
 
 ;===============
 ; 32-bit kernel
@@ -177,7 +177,7 @@ start_long:
 	mov edi, 74000h
 	mov eax, 200000h + 111b
 	
-	mov ecx, 7680
+	mov ecx, 4608
 
 	make_user_page_entries:
 		stosd
@@ -233,15 +233,15 @@ start_long:
 
 use64
 
-include 'inc/sys_64.inc'
+include 'inc/data.inc'
 
 main_64:
 
 	; Save the config file into kernel data before memory gets remapped
-    mov esi, 0500h
-    mov edi, k_config_file
-    mov ecx, 8
-    rep movsb
+	mov esi, 0500h
+	mov edi, k_config_file
+	mov ecx, 8
+	rep movsb
 	
 	; Clear everything out
 	xor rax, rax
@@ -320,8 +320,8 @@ main_64:
 	; 4      IRQ 4 disabled
 	; 3      IRQ 3 disabled
 	; 2      IRQ 2 disabled
-	; 1      IRQ 1 disabled
-	; 0      IRQ 0 disabled
+	; 1      IRQ 1 enabled
+	; 0      IRQ 0 enabled
 	mov al, 11111100b
 	out 21h, al
 	in al, 0A1h
@@ -456,19 +456,19 @@ main_entry:
 	hlt
 
 ; Core functions
-include 'inc/macros_64.inc'
-include 'inc/interrupts_64.inc'
-include 'inc/sched.inc'
-include 'inc/cli.inc'
-include 'inc/commandlist.inc'
+include 'inc/macros.inc'
+include 'sys/interrupts.inc'
+include 'sys/sched.inc'
+include 'cli/cli.inc'
+include 'cli/command_list.inc'
 ; Drivers
-include 'drivers/vga.inc'
-include 'drivers/pci.inc'
-include 'drivers/i8254x.inc'
-include 'drivers/rtl8169.inc'
-include 'drivers/key_converter.inc'
+include 'dev/vga.inc'
+include 'dev/pci.inc'
+include 'dev/i8254x.inc'
+include 'dev/rtl8169.inc'
+include 'dev/key_converter.inc'
 ; System calls and associated routines
-include 'syscalls.ASM'
+include 'sys/syscalls.ASM'
 ; Programs
 include 'apps/userland.inc'
 include 'apps/system.inc'
