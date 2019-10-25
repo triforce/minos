@@ -157,59 +157,15 @@ sys_dec_convert:
 ; ==========================================
 
 sys_convert_ascii_dec:
-	cmp al, 31h
-	je is_1
-	cmp al, 32h
-	je is_2
-	cmp al, 33h
-	je is_3
-	cmp al, 34h
-	je is_4
-	cmp al, 35h
-	je is_5
-	cmp al, 36h
-	je is_6
-	cmp al, 37h
-	je is_7
-	cmp al, 38h
-	je is_8
-	cmp al, 39h
-	je is_9
-	cmp al, 30h
-	je is_0
+	sub al, 30h
 	
-	is_1:
-		mov al, 1
-		jmp sys_convert_ascii_dec_done
-	is_2:
-		mov al, 2
-		jmp sys_convert_ascii_dec_done
-	is_3:
-		mov al, 3
-		jmp sys_convert_ascii_dec_done
-	is_4:
-		mov al, 4
-		jmp sys_convert_ascii_dec_done
-	is_5:
-		mov al, 5
-		jmp sys_convert_ascii_dec_done
-	is_6:
-		mov al, 6
-		jmp sys_convert_ascii_dec_done
-	is_7:
-		mov al, 7
-		jmp sys_convert_ascii_dec_done
-	is_8:
-		mov al, 8
-		jmp sys_convert_ascii_dec_done
-	is_9:
-		mov al, 9
-		jmp sys_convert_ascii_dec_done
-	is_0:
-		mov al, 0
-		jmp sys_convert_ascii_dec_done
+	cmp al, 9
+	jnb not_ascii
 	
-	sys_convert_ascii_dec_done:
+	ret
+	
+	not_ascii:
+		xor al, al
 		ret
 
 ; ===================================
